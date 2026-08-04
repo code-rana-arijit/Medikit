@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medikit
+  labels:
+    app.kubernetes.io/part-of: medikit
+    app.kubernetes.io/managed-by: kubectl

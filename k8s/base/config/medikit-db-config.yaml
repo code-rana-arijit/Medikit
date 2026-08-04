@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medikit-db-config
+  namespace: medikit
+data:
+  user-service-db-url: "jdbc:postgresql://postgres:5432/medikit_users"
+  product-service-db-url: "jdbc:postgresql://postgres:5432/medikit_products"
+  inventory-service-db-url: "jdbc:postgresql://postgres:5432/medikit_inventory"
+  order-service-db-url: "jdbc:postgresql://postgres:5432/medikit_orders"
+  payment-service-db-url: "jdbc:postgresql://postgres:5432/medikit_payments"
+  delivery-service-db-url: "jdbc:postgresql://postgres:5432/medikit_delivery"
+  prescription-service-db-url: "jdbc:postgresql://postgres:5432/medikit_prescriptions"

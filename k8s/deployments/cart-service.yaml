@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-service
+  namespace: medikit
+  labels:
+    app: cart-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cart-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: cart-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: cart-service
+          image: ghcr.io/code-rana-arijit/medikit/cart-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8104
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: EUREKA_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: medikit-common-config
+                  key: EUREKA_SERVER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: medikit-common-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: medikit-common-config
+                  key: REDIS_PORT
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: medikit-common-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+          resources:
+            requests:
+              cpu: 300m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8104
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8104
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart-service
+  namespace: medikit
+  labels:
+    app: cart-service
+spec:
+  selector:
+    app: cart-service
+  ports:
+    - port: 8104
+      targetPort: 8104
+      name: http

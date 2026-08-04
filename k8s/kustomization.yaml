@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: medikit
+
+resources:
+  - ../base/namespace.yaml
+  - ../base/config/medikit-common-config.yaml
+  - ../base/config/medikit-db-config.yaml
+  - ../base/config/medikit-secrets.yaml
+  - ../postgres/postgres.yaml
+  - ../redis/redis.yaml
+  - ../kafka/kafka.yaml
+  - ../deployments/discovery-server.yaml
+  - ../deployments/config-server.yaml
+  - ../deployments/api-gateway.yaml
+  - ../deployments/user-service.yaml
+  - ../deployments/product-service.yaml
+  - ../deployments/inventory-service.yaml
+  - ../deployments/cart-service.yaml
+  - ../deployments/order-service.yaml
+  - ../deployments/payment-service.yaml
+  - ../deployments/delivery-service.yaml
+  - ../deployments/notification-service.yaml
+  - ../deployments/prescription-service.yaml
+  - ../deployments/search-service.yaml
+  - ../hpa/api-gateway-hpa.yaml
+  - ../hpa/user-service-hpa.yaml
+  - ../hpa/product-service-hpa.yaml
+  - ../hpa/inventory-service-hpa.yaml
+  - ../hpa/cart-service-hpa.yaml
+  - ../hpa/order-service-hpa.yaml
+  - ../hpa/payment-service-hpa.yaml
+  - ../hpa/delivery-service-hpa.yaml
+  - ../hpa/notification-service-hpa.yaml
+  - ../hpa/prescription-service-hpa.yaml
+  - ../hpa/search-service-hpa.yaml
+  - ../ingress/ingress.yaml

@@ -1,0 +1,48 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Env
+.env
+.env.*
+!.env.example
+application-local.yml
+
+# Kubernetes secrets
+k8s/**/sealed-*
+k8s/base/secret*.yaml
+
+# Node
+node_modules/
+dist/
+
+# Misc
+out/
+*.tmp
+.elasticbeanstalk/
+.circleci/
+travis.yml
+.dockerignore.tmp

@@ -1,0 +1,17 @@
+target/
+**/target/
+.git/
+.idea/
+*.iml
+.vscode/
+logs/
+*.log
+.env
+.DS_Store
+node_modules/
+dist/
+k8s/
+.github/
+docs/
+*.md
+docker-compose.yml
