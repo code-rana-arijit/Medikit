@@ -16,6 +16,10 @@ spec:
     - hosts:
         - api.medikit.local
       secretName: medikit-tls
+    - hosts:
+        - grafana.medikit.local
+        - prometheus.medikit.local
+      secretName: medikit-observability-tls
   rules:
     - host: api.medikit.local
       http:
@@ -34,3 +38,23 @@ spec:
                 name: api-gateway
                 port:
                   number: 8080
+    - host: grafana.medikit.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+    - host: prometheus.medikit.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090

@@ -230,18 +230,18 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - Full K8s manifests (StatefulSets, Deployments, HPA, Ingress, ConfigMaps, Secrets) ✅
 - GitHub Actions: test → SonarQube → Docker → kubectl deploy ✅
 
-### Phase 6 - Hardening for 50K Concurrent Users (NEXT)
-- [ ] Kafka multi-partition tuning + consumer groups per service
-- [ ] Redis Cluster mode (cart/lock/session sharding)
-- [ ] PostgreSQL read replicas + connection pooling (PgBouncer)
-- [ ] Introduce real Elasticsearch for full-text search
-- [ ] End-to-end load testing (k6/Gatling), capacity model per service
-- [ ] Observability: Prometheus + Grafana dashboards, distributed tracing (Micrometer Tracing + Tempo), Loki logs
+### Phase 6 - Hardening for 50K Concurrent Users (IN PROGRESS)
+- [x] Kafka multi-partition tuning + consumer groups per service
+- [x] Redis Cluster mode (cart/lock/session sharding)
+- [x] PostgreSQL read replicas + connection pooling (PgBouncer)
+- [x] Introduce real Elasticsearch for full-text search
+- [x] End-to-end load testing (k6/Gatling), capacity model per service
+- [x] Observability: Prometheus + Grafana dashboards, distributed tracing (Micrometer Tracing + Tempo), Loki logs
 - [ ] Envoy/Istio service mesh, mTLS
 - [ ] Chaos engineering (Chaos Mesh) for saga resilience validation
-- [ ] Kubernetes: PodDisruptionBudgets, NetworkPolicies, priority classes
-- [ ] Rate limiting at gateway with token-bucket per user + per IP
-- [ ] Caching strategy: product catalog TTL cache, hot product local cache (Caffeine)
+- [x] Kubernetes: PodDisruptionBudgets, NetworkPolicies, priority classes
+- [x] Rate limiting at gateway with token-bucket per user + per IP
+- [x] Caching strategy: product catalog TTL cache, hot product local cache (Caffeine)
 
 ### Phase 7 - Production Compliance (LATER)
 - [ ] Real payment gateway integration (Razorpay/Stripe)
@@ -468,7 +468,7 @@ medikit/
 ## Roadmap
 
 - [x] Phase 0-5: Platform, catalog, commerce, delivery, K8s, CI/CD
-- [ ] Phase 6: Scale hardening for 50K concurrent users (see plan)
+- [ ] Phase 6: Scale hardening for 50K concurrent users (9/11 done; service mesh + chaos engineering remain)
 - [ ] Real payment providers, SMS/email providers, object storage
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
 - [ ] AI assistant: symptom-based medicine recommendations, prescription OCR

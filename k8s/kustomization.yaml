@@ -8,8 +8,11 @@ resources:
   - ../base/config/medikit-db-config.yaml
   - ../base/config/medikit-secrets.yaml
   - ../postgres/postgres.yaml
+  - ../postgres/postgres-replica.yaml
+  - ../pgbouncer/pgbouncer.yaml
   - ../redis/redis.yaml
   - ../kafka/kafka.yaml
+  - ../elasticsearch/elasticsearch.yaml
   - ../deployments/discovery-server.yaml
   - ../deployments/config-server.yaml
   - ../deployments/api-gateway.yaml
@@ -34,4 +37,12 @@ resources:
   - ../hpa/notification-service-hpa.yaml
   - ../hpa/prescription-service-hpa.yaml
   - ../hpa/search-service-hpa.yaml
+  - ../scale/priority-classes.yaml
+  - ../scale/pdbs.yaml
+  - ../scale/network-policies.yaml
+  - ../observability/prometheus.yaml
+  - ../observability/grafana.yaml
+  - ../observability/tempo.yaml
+  - ../observability/loki.yaml
+  - ../observability/promtail.yaml
   - ../ingress/ingress.yaml

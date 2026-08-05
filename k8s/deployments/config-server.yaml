@@ -19,7 +19,11 @@ spec:
     metadata:
       labels:
         app: config-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8888"
     spec:
+      priorityClassName: medikit-critical
       terminationGracePeriodSeconds: 30
       containers:
         - name: config-server

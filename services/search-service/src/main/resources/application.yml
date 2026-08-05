@@ -4,11 +4,16 @@ server:
 spring:
   application:
     name: search-service
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URL:http://localhost:9200}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      cluster:
+        nodes: ${REDIS_CLUSTER_NODES:}
+        max-redirects: 3
       lettuce:
         pool:
           max-active: 64
@@ -21,7 +26,10 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       auto-offset-reset: latest
-
+    listener:
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:6}
+      ack-mode: manual_immediate
+      poll-timeout: 5s
 eureka:
   client:
     service-url:
@@ -33,6 +41,7 @@ eureka:
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
 
+
 management:
   endpoints:
     web:
@@ -41,9 +50,18 @@ management:
   endpoint:
     health:
       show-details: always
-
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+medikit:
+  search:
+    engine: ${SEARCH_ENGINE:redis}

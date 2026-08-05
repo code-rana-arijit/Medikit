@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica
+  namespace: medikit
+spec:
+  serviceName: postgres-replica
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres-replica
+  template:
+    metadata:
+      labels:
+        app: postgres-replica
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "medikit"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: DB_PASSWORD
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: DB_PASSWORD
+            - name: PRIMARY_HOST
+              value: postgres
+            - name: POSTGRES_REPLICA_USER
+              value: "replica"
+            - name: POSTGRES_REPLICA_PASSWORD
+              value: "replica"
+          args:
+            - "bash"
+            - "-c"
+            - |
+              # Wait for primary then base-backup to sync (requires pg_basebackup)
+              until pg_isready -h $PRIMARY_HOST -U medikit; do sleep 5; done
+              pg_basebackup -h $PRIMARY_HOST -U medikit -D /var/lib/postgresql/data -Fp -Xs -R -P
+              chown -R postgres:postgres /var/lib/postgresql/data
+              exec docker-entrypoint.sh postgres
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: medikit
+spec:
+  selector:
+    app: postgres-replica
+  ports:
+    - port: 5432
+      targetPort: 5432

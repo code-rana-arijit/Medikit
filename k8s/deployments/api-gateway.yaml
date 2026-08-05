@@ -19,7 +19,11 @@ spec:
     metadata:
       labels:
         app: api-gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
     spec:
+      priorityClassName: medikit-critical
       terminationGracePeriodSeconds: 30
       containers:
         - name: api-gateway

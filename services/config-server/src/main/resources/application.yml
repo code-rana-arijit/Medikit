@@ -19,8 +19,18 @@ spring:
       name: ${CONFIG_USERNAME:config}
       password: ${CONFIG_PASSWORD:config}
 
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,refresh,busrefresh
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}

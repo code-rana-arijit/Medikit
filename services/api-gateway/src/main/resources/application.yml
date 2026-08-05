@@ -25,8 +25,13 @@ spring:
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 100
-                redis-rate-limiter.burstCapacity: 200
+                redis-rate-limiter.replenishRate: ${RL_USER_REPLENISH:100}
+                redis-rate-limiter.burstCapacity: ${RL_USER_BURST:200}
+                key-resolver: "#{@compositeKeyResolver}"
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RL_IP_REPLENISH:500}
+                redis-rate-limiter.burstCapacity: ${RL_IP_BURST:1000}
                 key-resolver: "#{@ipKeyResolver}"
         - id: product-service
           uri: lb://product-service
@@ -35,8 +40,13 @@ spring:
           filters:
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 300
-                redis-rate-limiter.burstCapacity: 600
+                redis-rate-limiter.replenishRate: ${RL_PRODUCT_USER_REPLENISH:200}
+                redis-rate-limiter.burstCapacity: ${RL_PRODUCT_USER_BURST:400}
+                key-resolver: "#{@compositeKeyResolver}"
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${RL_PRODUCT_IP_REPLENISH:1000}
+                redis-rate-limiter.burstCapacity: ${RL_PRODUCT_IP_BURST:2000}
                 key-resolver: "#{@ipKeyResolver}"
         - id: search-service
           uri: lb://search-service
@@ -75,12 +85,25 @@ spring:
           args:
             name: medikitGatewayCB
             fallbackUri: forward:/fallback/{status}
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RL_GLOBAL_USER_REPLENISH:50}
+            redis-rate-limiter.burstCapacity: ${RL_GLOBAL_USER_BURST:100}
+            key-resolver: "#{@compositeKeyResolver}"
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RL_GLOBAL_IP_REPLENISH:300}
+            redis-rate-limiter.burstCapacity: ${RL_GLOBAL_IP_BURST:600}
+            key-resolver: "#{@ipKeyResolver}"
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2s
+      cluster:
+        nodes: ${REDIS_CLUSTER_NODES:}
+        max-redirects: 3
 
 eureka:
   client:
@@ -93,11 +116,18 @@ eureka:
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
 
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,gateway
+        include: health,info,metrics,prometheus
   endpoint:
-    gateway:
-      enabled: true
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}

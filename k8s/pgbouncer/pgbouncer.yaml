@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: medikit
+data:
+  pgbouncer.ini: |
+    [databases]
+    * = host=postgres port=5432
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 6432
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    max_client_conn = 2000
+    default_pool_size = 50
+    min_pool_size = 10
+    reserve_pool_size = 5
+    server_idle_timeout = 600
+    max_db_connections = 100
+    query_wait_timeout = 30
+    server_lifetime = 3600
+    tcp_keepalive = 1
+    log_connections = 0
+    log_disconnections = 0
+  userlist.txt: |
+    "medikit" "medikit"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: medikit
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.22.1
+          args: ["/bin/sh", "-c"]
+          ports:
+            - containerPort: 6432
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: "medikit"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pgbouncer
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 6432
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: pgbouncer-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: medikit
+spec:
+  selector:
+    app: pgbouncer
+  ports:
+    - port: 6432
+      targetPort: 6432

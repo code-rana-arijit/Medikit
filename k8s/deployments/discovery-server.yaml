@@ -19,7 +19,11 @@ spec:
     metadata:
       labels:
         app: discovery-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8761"
     spec:
+      priorityClassName: medikit-critical
       terminationGracePeriodSeconds: 30
       containers:
         - name: discovery-server

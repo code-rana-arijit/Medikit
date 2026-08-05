@@ -19,7 +19,11 @@ spec:
     metadata:
       labels:
         app: product-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8102"
     spec:
+      priorityClassName: medikit-high
       terminationGracePeriodSeconds: 30
       containers:
         - name: product-service

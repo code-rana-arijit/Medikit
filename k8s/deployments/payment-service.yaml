@@ -19,7 +19,11 @@ spec:
     metadata:
       labels:
         app: payment-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8106"
     spec:
+      priorityClassName: medikit-high
       terminationGracePeriodSeconds: 30
       containers:
         - name: payment-service

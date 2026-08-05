@@ -9,6 +9,8 @@ import com.medikit.product.entity.Category;
 import com.medikit.product.entity.Product;
 import com.medikit.product.repository.CategoryRepository;
 import com.medikit.product.repository.ProductRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,11 +77,13 @@ public class ProductService {
                 .toList();
     }
 
+    @Cacheable(cacheNames = "product", key = "#id", unless = "#result == null")
     public ProductResponse get(UUID id) {
         return ProductResponse.from(getEntity(id));
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "product", key = "#result.id()")
     public ProductResponse create(ProductRequest request) {
         Category category = request.categoryId() != null
                 ? categoryRepository.findById(request.categoryId())
@@ -108,6 +112,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "product", key = "#id")
     public ProductResponse update(UUID id, ProductRequest request) {
         Product product = getEntity(id);
         Category category = request.categoryId() != null
@@ -135,6 +140,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "product", key = "#id")
     public void deactivate(UUID id) {
         Product product = getEntity(id);
         product.setActive(false);

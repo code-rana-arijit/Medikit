@@ -29,6 +29,9 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      cluster:
+        nodes: ${REDIS_CLUSTER_NODES:}
+        max-redirects: 3
       lettuce:
         pool:
           max-active: 64
@@ -67,6 +70,7 @@ medikit:
     ttl-seconds: 300
     max-attempts: 5
 
+
 management:
   endpoints:
     web:
@@ -75,7 +79,12 @@ management:
   endpoint:
     health:
       show-details: always
-
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://tempo:4318/v1/traces}
 springdoc:
   api-docs:
     path: /v3/api-docs
