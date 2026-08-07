@@ -52,6 +52,7 @@ Traditional medicine delivery platforms fail on three fronts: **speed**, **inven
 - Order lifecycle: create → pay → confirm → deliver → complete
 - Real-time delivery tracking
 - Email/SMS/push notifications
+- **AI Health Intelligence** - drug interaction checker, symptom-based recommendations, prescription analysis
 
 ### Pharmacy / Admin
 - Product & category management
@@ -79,6 +80,7 @@ graph TD
     G -->|"/api/v1/auth|users"| US["User Service"]
     G -->|"/api/v1/products"| PS["Product Service"]
     G -->|"/api/v1/search"| SS["Search Service"]
+    G -->|"/api/v1/health"| HS["Health Service"]
     G -->|"/api/v1/inventory"| IS["Inventory Service"]
     G -->|"/api/v1/cart"| CS["Cart Service"]
     G -->|"/api/v1/orders"| OS["Order Service"]
@@ -148,6 +150,7 @@ graph TD
 | 11 | `notification-service` | 8108 | Email/SMS/push (mock providers) | - |
 | 12 | `prescription-service` | 8109 | Prescription upload/validation/expiry | medikit_prescriptions |
 | 13 | `search-service` | 8110 | Redis search index, autocomplete | Redis |
+| 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis | medikit_health |
 
 ---
 
@@ -243,13 +246,19 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] Rate limiting at gateway with token-bucket per user + per IP
 - [x] Caching strategy: product catalog TTL cache, hot product local cache (Caffeine)
 
-### Phase 7 - Production Compliance (LATER)
+### Phase 7 - Production Compliance (DONE)
 - [x] Real payment gateway integration (Razorpay/Stripe)
 - [x] Real SMS/email providers (Twilio, SES)
 - [x] S3-compatible storage for prescription images
 - [x] Pharmacist verification, Drug license validation
 - [x] GDPR/HIPAA-style audit logging, data retention policies
 - [x] Disaster recovery: cross-region replication, RPO/RTO targets
+
+### Phase 8 - AI Health Intelligence (IN PROGRESS)
+- [x] **Drug interaction checker** - `health-service` with a seeded interaction KB (salt pairs, severity, clinical advice); resolves brand names to salts, flags contraindicated/major interactions
+- [ ] **Symptom-based medicine recommender** - rule-based symptom → condition → medicine reasoning engine with ranked suggestions + safety disclaimers
+- [ ] **Prescription OCR & AI validation** - extract drug names from prescription uploads, cross-check against order items and the interaction KB
+- [ ] **AI assistant chat API** - compose symptom analysis + interaction checks + prescription findings into a plain-English clinical summary (env-gated LLM backend, rule-based default)
 
 ---
 
@@ -270,6 +279,7 @@ Assumes ~2,000 requests/sec ingress, ~500 orders/sec peak:
 | order-service | 500 | 3-20 | Saga orchestration | Async Kafka, retries, timeouts |
 | payment-service | 500 | 2-15 | Idempotency | Redis idempotency keys |
 | search-service | 800 | 2-10 | Redis set ops | Inverted index, token sets |
+| health-service | 100 | 2-8 | KB lookups | Indexed pairs, pre-resolved salts |
 
 ### Key Scalability Decisions
 1. **Database per service** - independent scale, no cross-service joins, no shared locks
@@ -329,7 +339,7 @@ mvn test
 # Start just infrastructure
 docker compose --profile infra up -d
 
-# Start infrastructure + all 13 services (first build may take several minutes)
+# Start infrastructure + all 14 services (first build may take several minutes)
 docker compose --profile all up -d --build
 
 # Tail logs
@@ -340,7 +350,7 @@ docker compose down
 ```
 
 Database defaults: `medikit` / `medikit`. Each service uses its own database:
-`medikit_users`, `medikit_products`, `medikit_inventory`, `medikit_orders`, `medikit_payments`, `medikit_delivery`, `medikit_prescriptions`.
+`medikit_users`, `medikit_products`, `medikit_inventory`, `medikit_orders`, `medikit_payments`, `medikit_delivery`, `medikit_prescriptions`, `medikit_health`.
 
 ---
 
@@ -373,7 +383,7 @@ kubectl apply -f k8s/ingress/
 graph LR
     A["Push to main"] --> B["Build & Test"]
     B --> C["SonarQube Quality Gate"]
-    B --> D["Build Docker Images (13 services)"]
+    B --> D["Build Docker Images (14 services)"]
     D --> E["Push to GHCR"]
     E --> F["Deploy to Kubernetes"]
     C --> F
@@ -412,6 +422,10 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | GET | `/api/v1/delivery/{orderId}` | delivery | Bearer |
 | POST | `/api/v1/prescriptions/upload` | prescription | Bearer |
 | POST | `/api/v1/prescriptions/{id}/validate` | prescription | Bearer |
+| POST | `/api/v1/health/interactions/check` | health | Public |
+| GET | `/api/v1/health/interactions` | health | Public |
+
+> **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. Used to flag unsafe combinations at checkout.
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -448,7 +462,8 @@ medikit/
 │   ├── delivery-service/
 │   ├── notification-service/
 │   ├── prescription-service/
-│   └── search-service/
+│   ├── search-service/
+│   └── health-service/              # AI health intelligence
 ├── k8s/                             # Kubernetes manifests
 │   ├── base/                        # namespace, configmaps, secrets
 │   ├── postgres/ redis/ kafka/ elasticsearch/
@@ -469,9 +484,10 @@ medikit/
 
 - [x] Phase 0-5: Platform, catalog, commerce, delivery, K8s, CI/CD
 - [ ] Phase 6: Scale hardening for 50K concurrent users (9/11 done; service mesh + chaos engineering remain)
-- [ ] Real payment providers, SMS/email providers, object storage
+- [x] Real payment providers, SMS/email providers, object storage
+- [x] Phase 7: Production compliance (audit, retention, DR, pharmacist verification)
+- [ ] Phase 8: AI Health Intelligence (8a drug interaction checker done; symptom recommender, prescription OCR, AI assistant chat pending)
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
-- [ ] AI assistant: symptom-based medicine recommendations, prescription OCR
 - [ ] Pharmacist dashboard web app
 
 ---

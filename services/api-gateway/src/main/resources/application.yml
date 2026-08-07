@@ -80,6 +80,10 @@ spring:
           uri: lb://prescription-service
           predicates:
             - Path=/api/v1/prescriptions/**
+        - id: health-service
+          uri: lb://health-service
+          predicates:
+            - Path=/api/v1/health/**
       default-filters:
         - name: CircuitBreaker
           args:
