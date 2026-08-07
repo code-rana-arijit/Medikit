@@ -53,7 +53,6 @@ Traditional medicine delivery platforms fail on three fronts: **speed**, **inven
 - Real-time delivery tracking
 - Email/SMS/push notifications
 - **AI Health Intelligence** - drug interaction checker, symptom-based recommendations, prescription analysis
-
 ### Pharmacy / Admin
 - Product & category management
 - Inventory/stock management with low-stock alerts
@@ -150,8 +149,7 @@ graph TD
 | 11 | `notification-service` | 8108 | Email/SMS/push (mock providers) | - |
 | 12 | `prescription-service` | 8109 | Prescription upload/validation/expiry | medikit_prescriptions |
 | 13 | `search-service` | 8110 | Redis search index, autocomplete | Redis |
-| 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis | medikit_health |
-
+| 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis & recommendations | medikit_health |
 ---
 
 ## High-Level Design: The Order Saga
@@ -256,7 +254,7 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 
 ### Phase 8 - AI Health Intelligence (IN PROGRESS)
 - [x] **Drug interaction checker** - `health-service` with a seeded interaction KB (salt pairs, severity, clinical advice); resolves brand names to salts, flags contraindicated/major interactions
-- [ ] **Symptom-based medicine recommender** - rule-based symptom → condition → medicine reasoning engine with ranked suggestions + safety disclaimers
+- [x] **Symptom-based medicine recommender** - rule-based symptom → condition → medicine reasoning engine with ranked suggestions + safety disclaimers
 - [ ] **Prescription OCR & AI validation** - extract drug names from prescription uploads, cross-check against order items and the interaction KB
 - [ ] **AI assistant chat API** - compose symptom analysis + interaction checks + prescription findings into a plain-English clinical summary (env-gated LLM backend, rule-based default)
 
@@ -279,7 +277,7 @@ Assumes ~2,000 requests/sec ingress, ~500 orders/sec peak:
 | order-service | 500 | 3-20 | Saga orchestration | Async Kafka, retries, timeouts |
 | payment-service | 500 | 2-15 | Idempotency | Redis idempotency keys |
 | search-service | 800 | 2-10 | Redis set ops | Inverted index, token sets |
-| health-service | 100 | 2-8 | KB lookups | Indexed pairs, pre-resolved salts |
+| health-service | 100 | 2-8 | KB lookups | Indexed pairs, pre-resolved salts, condition cache |
 
 ### Key Scalability Decisions
 1. **Database per service** - independent scale, no cross-service joins, no shared locks
@@ -424,8 +422,10 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | POST | `/api/v1/prescriptions/{id}/validate` | prescription | Bearer |
 | POST | `/api/v1/health/interactions/check` | health | Public |
 | GET | `/api/v1/health/interactions` | health | Public |
+| POST | `/api/v1/health/symptoms/analyze` | health | Public |
+| GET | `/api/v1/health/conditions` | health | Public |
 
-> **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. Used to flag unsafe combinations at checkout.
+> **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms).
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -486,7 +486,7 @@ medikit/
 - [ ] Phase 6: Scale hardening for 50K concurrent users (9/11 done; service mesh + chaos engineering remain)
 - [x] Real payment providers, SMS/email providers, object storage
 - [x] Phase 7: Production compliance (audit, retention, DR, pharmacist verification)
-- [ ] Phase 8: AI Health Intelligence (8a drug interaction checker done; symptom recommender, prescription OCR, AI assistant chat pending)
+- [ ] Phase 8: AI Health Intelligence (8a drug interaction checker + 8b symptom recommender done; prescription OCR, AI assistant chat pending)
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
 - [ ] Pharmacist dashboard web app
 
