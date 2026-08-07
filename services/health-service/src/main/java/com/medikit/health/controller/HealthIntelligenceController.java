@@ -3,6 +3,8 @@ package com.medikit.health.controller;
 import com.medikit.health.dto.InteractionCheckRequest;
 import com.medikit.health.dto.InteractionCheckResponse;
 import com.medikit.health.dto.InteractionDto;
+import com.medikit.health.dto.PrescriptionAnalyzeRequest;
+import com.medikit.health.dto.PrescriptionAnalysisResponse;
 import com.medikit.health.dto.RemedyDto;
 import com.medikit.health.dto.SymptomAnalysisRequest;
 import com.medikit.health.dto.SymptomAnalysisResponse;
@@ -11,6 +13,7 @@ import com.medikit.health.entity.DrugInteraction;
 import com.medikit.health.repository.ConditionRemedyRepository;
 import com.medikit.health.repository.DrugInteractionRepository;
 import com.medikit.health.service.DrugInteractionChecker;
+import com.medikit.health.service.PrescriptionAnalyzerService;
 import com.medikit.health.service.SymptomRecommenderService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -33,15 +36,18 @@ public class HealthIntelligenceController {
     private final DrugInteractionRepository interactionRepository;
     private final SymptomRecommenderService symptomRecommenderService;
     private final ConditionRemedyRepository conditionRemedyRepository;
+    private final PrescriptionAnalyzerService prescriptionAnalyzerService;
 
     public HealthIntelligenceController(DrugInteractionChecker interactionChecker,
                                         DrugInteractionRepository interactionRepository,
                                         SymptomRecommenderService symptomRecommenderService,
-                                        ConditionRemedyRepository conditionRemedyRepository) {
+                                        ConditionRemedyRepository conditionRemedyRepository,
+                                        PrescriptionAnalyzerService prescriptionAnalyzerService) {
         this.interactionChecker = interactionChecker;
         this.interactionRepository = interactionRepository;
         this.symptomRecommenderService = symptomRecommenderService;
         this.conditionRemedyRepository = conditionRemedyRepository;
+        this.prescriptionAnalyzerService = prescriptionAnalyzerService;
     }
 
     @PostMapping("/interactions/check")
@@ -74,5 +80,11 @@ public class HealthIntelligenceController {
                                 r -> new RemedyDto(r.getMedicine(), r.isOtc(), r.getPriority(), r.getUsageNote()),
                                 Collectors.toList())));
         return ResponseEntity.ok(byCondition);
+    }
+
+    @PostMapping("/prescriptions/analyze")
+    public PrescriptionAnalysisResponse analyzePrescription(
+            @Valid @RequestBody PrescriptionAnalyzeRequest request) {
+        return prescriptionAnalyzerService.analyze(request.text(), request.orderItems());
     }
 }
