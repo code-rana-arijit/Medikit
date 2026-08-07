@@ -49,9 +49,16 @@ eureka:
 
 medikit:
   payment:
-    gateway: MOCK
+    provider: ${PAYMENT_PROVIDER:mock}
     auto-capture: true
     idempotency-ttl-hours: 24
+    razorpay:
+      key-id: ${RAZORPAY_KEY_ID:}
+      key-secret: ${RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
 
 
 management:

@@ -54,6 +54,40 @@ spec:
                 configMapKeyRef:
                   name: medikit-common-config
                   key: KAFKA_BOOTSTRAP_SERVERS
+            - name: NOTIFICATION_MOCK
+              value: "${NOTIFICATION_MOCK:-true}"
+            - name: TWILIO_ACCOUNT_SID
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: TWILIO_ACCOUNT_SID
+                  optional: true
+            - name: TWILIO_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: TWILIO_AUTH_TOKEN
+                  optional: true
+            - name: TWILIO_FROM_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: TWILIO_FROM_NUMBER
+                  optional: true
+            - name: SES_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: S3_ACCESS_KEY
+                  optional: true
+            - name: SES_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: S3_SECRET_KEY
+                  optional: true
+            - name: SES_REGION
+              value: "${SES_REGION:-us-east-1}"
           resources:
             requests:
               cpu: 300m

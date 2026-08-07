@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: medikit
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: dump
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  pg_dump -h postgres -U medikit -d medikit \
+                    --format=custom --file=/shared/medikit-$TS.dump
+                  touch /shared/dump-done
+                  echo "Dump medikit-$TS.dump created"
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: medikit-secrets
+                      key: DB_PASSWORD
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+            - name: upload
+              image: amazon/aws-cli:2.17.20
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+                  # Wait for the dump to complete
+                  until [ -f /shared/dump-done ]; do sleep 5; done
+                  for f in /shared/medikit-*.dump; do
+                    aws s3 cp "$f" \
+                      "s3://${BACKUP_BUCKET}/postgres/$(basename "$f")" \
+                      --endpoint-url "${BACKUP_ENDPOINT:-https://s3.amazonaws.com}"
+                    echo "Uploaded $(basename "$f")"
+                  done
+              env:
+                - name: BACKUP_BUCKET
+                  value: "medikit-backups"
+                - name: BACKUP_ENDPOINT
+                  value: "https://s3.amazonaws.com"
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: medikit-secrets
+                      key: S3_ACCESS_KEY
+                      optional: true
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: medikit-secrets
+                      key: S3_SECRET_KEY
+                      optional: true
+              volumeMounts:
+                - name: shared
+                  mountPath: /shared
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+          volumes:
+            - name: shared
+              emptyDir: {}

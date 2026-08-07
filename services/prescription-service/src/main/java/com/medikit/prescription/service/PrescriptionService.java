@@ -1,5 +1,6 @@
 package com.medikit.prescription.service;
 
+import com.medikit.common.audit.AuditService;
 import com.medikit.common.event.EventPublisher;
 import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.ConflictException;
@@ -36,13 +37,16 @@ public class PrescriptionService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionValidationRepository validationRepository;
     private final EventPublisher eventPublisher;
+    private final AuditService auditService;
 
     public PrescriptionService(PrescriptionRepository prescriptionRepository,
                                PrescriptionValidationRepository validationRepository,
-                               EventPublisher eventPublisher) {
+                               EventPublisher eventPublisher,
+                               AuditService auditService) {
         this.prescriptionRepository = prescriptionRepository;
         this.validationRepository = validationRepository;
         this.eventPublisher = eventPublisher;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -65,7 +69,10 @@ public class PrescriptionService {
     }
 
     public PrescriptionResponse get(UUID id) {
-        return PrescriptionResponse.from(getEntity(id));
+        PrescriptionResponse response = PrescriptionResponse.from(getEntity(id));
+        auditService.record(AuditService.AuditAction.PRESCRIPTION_ACCESSED, null, "SYSTEM",
+                "prescription", id.toString(), null);
+        return response;
     }
 
     @Transactional
@@ -117,6 +124,14 @@ public class PrescriptionService {
 
         Prescription saved = prescriptionRepository.save(prescription);
         publishValidated(saved);
+
+        auditService.record(AuditService.AuditAction.ADMIN_REVIEW,
+                request.validatorId() == null ? null : request.validatorId().toString(),
+                "PHARMACIST",
+                "prescription", prescriptionId.toString(), Map.of(
+                        "decision", request.decision().name(),
+                        "expiresAt", String.valueOf(saved.getExpiresAt())));
+
         return PrescriptionResponse.from(saved);
     }
 

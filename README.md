@@ -244,12 +244,12 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] Caching strategy: product catalog TTL cache, hot product local cache (Caffeine)
 
 ### Phase 7 - Production Compliance (LATER)
-- [ ] Real payment gateway integration (Razorpay/Stripe)
-- [ ] Real SMS/email providers (Twilio, SES)
-- [ ] S3-compatible storage for prescription images
-- [ ] Pharmacist verification, Drug license validation
-- [ ] GDPR/HIPAA-style audit logging, data retention policies
-- [ ] Disaster recovery: cross-region replication, RPO/RTO targets
+- [x] Real payment gateway integration (Razorpay/Stripe)
+- [x] Real SMS/email providers (Twilio, SES)
+- [x] S3-compatible storage for prescription images
+- [x] Pharmacist verification, Drug license validation
+- [x] GDPR/HIPAA-style audit logging, data retention policies
+- [x] Disaster recovery: cross-region replication, RPO/RTO targets
 
 ---
 

@@ -45,4 +45,5 @@ resources:
   - ../observability/tempo.yaml
   - ../observability/loki.yaml
   - ../observability/promtail.yaml
+  - ../backup/postgres-backup.yaml
   - ../ingress/ingress.yaml

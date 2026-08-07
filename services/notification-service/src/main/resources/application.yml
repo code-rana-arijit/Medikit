@@ -55,8 +55,17 @@ eureka:
 medikit:
   notification:
     enabled: ${NOTIFICATION_ENABLED:true}
+    mock: ${NOTIFICATION_MOCK:true}
     dedup-ttl-seconds: 600
     default-recipient: ${NOTIFICATION_DEFAULT_RECIPIENT:customer@medikit.com}
+    twilio:
+      enabled: ${TWILIO_ENABLED:false}
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
+    ses:
+      enabled: ${SES_ENABLED:false}
+      from-address: ${SES_FROM_ADDRESS:no-reply@medikit.com}
 
 
 management:

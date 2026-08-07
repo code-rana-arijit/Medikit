@@ -14,6 +14,7 @@ public final class Topics {
     public static final String PAYMENT_INITIATED = "medikit.payment.initiated";
     public static final String PAYMENT_COMPLETED = "medikit.payment.completed";
     public static final String PAYMENT_FAILED = "medikit.payment.failed";
+    public static final String PAYMENT_REFUNDED = "medikit.payment.refunded";
 
     public static final String INVENTORY_RESERVED = "medikit.inventory.reserved";
     public static final String INVENTORY_RESERVATION_FAILED = "medikit.inventory.reservation.failed";
@@ -28,4 +29,6 @@ public final class Topics {
     public static final String PRODUCT_UPDATED = "medikit.product.updated";
 
     public static final String STOCK_UPDATED = "medikit.stock.updated";
+
+    public static final String AUDIT_EVENTS = "medikit.audit.events";
 }

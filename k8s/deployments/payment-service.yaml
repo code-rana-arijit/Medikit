@@ -54,6 +54,38 @@ spec:
                 configMapKeyRef:
                   name: medikit-common-config
                   key: KAFKA_BOOTSTRAP_SERVERS
+            - name: PAYMENT_PROVIDER
+              value: ${PAYMENT_PROVIDER:-mock}
+            - name: RAZORPAY_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: RAZORPAY_KEY_ID
+                  optional: true
+            - name: RAZORPAY_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: RAZORPAY_KEY_SECRET
+                  optional: true
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: RAZORPAY_WEBHOOK_SECRET
+                  optional: true
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: STRIPE_SECRET_KEY
+                  optional: true
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: medikit-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+                  optional: true
             - name: DB_USERNAME
               valueFrom:
                 configMapKeyRef:

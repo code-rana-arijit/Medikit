@@ -4,10 +4,12 @@ import com.medikit.notification.model.Notification;
 import com.medikit.notification.model.NotificationType;
 import com.medikit.notification.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "medikit.notification.mock", havingValue = "true", matchIfMissing = true)
 public class SmsProvider implements NotificationService {
 
     @Override

@@ -12,7 +12,6 @@ import java.util.List;
 @Configuration
 @ConditionalOnProperty(name = "medikit.kafka.topics.enabled", havingValue = "true", matchIfMissing = true)
 public class KafkaTopicConfig {
-
     private final int partitions;
     private final short replicas;
 
@@ -44,7 +43,8 @@ public class KafkaTopicConfig {
                 topic(Topics.DELIVERY_UPDATED, hot),
                 topic(Topics.NOTIFICATION_SEND, hot),
                 topic(Topics.PRODUCT_UPDATED, hot),
-                topic(Topics.STOCK_UPDATED, hot)
+                topic(Topics.STOCK_UPDATED, hot),
+                topic(Topics.AUDIT_EVENTS, hot)
         );
     }
 

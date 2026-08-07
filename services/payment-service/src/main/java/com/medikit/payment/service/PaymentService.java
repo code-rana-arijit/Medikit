@@ -1,5 +1,6 @@
 package com.medikit.payment.service;
 
+import com.medikit.common.audit.AuditService;
 import com.medikit.common.event.EventPublisher;
 import com.medikit.common.event.Topics;
 import com.medikit.common.web.BadRequestException;
@@ -9,6 +10,7 @@ import com.medikit.payment.dto.PaymentRequest;
 import com.medikit.payment.dto.PaymentResponse;
 import com.medikit.payment.dto.RefundRequest;
 import com.medikit.payment.entity.Payment;
+import com.medikit.payment.gateway.PaymentGateway;
 import com.medikit.payment.repository.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +34,21 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final EventPublisher eventPublisher;
     private final StringRedisTemplate redisTemplate;
+    private final PaymentGateway gateway;
+    private final AuditService auditService;
     private final boolean autoCapture;
 
     public PaymentService(PaymentRepository paymentRepository,
                           EventPublisher eventPublisher,
                           StringRedisTemplate redisTemplate,
+                          PaymentGateway gateway,
+                          AuditService auditService,
                           @Value("${medikit.payment.auto-capture:true}") boolean autoCapture) {
         this.paymentRepository = paymentRepository;
         this.eventPublisher = eventPublisher;
         this.redisTemplate = redisTemplate;
+        this.gateway = gateway;
+        this.auditService = auditService;
         this.autoCapture = autoCapture;
     }
 
@@ -66,8 +74,18 @@ public class PaymentService {
                 .currency(request.currency() != null ? request.currency() : "INR")
                 .method(request.method() != null ? request.method() : "CARD")
                 .status(Payment.PaymentStatus.INITIATED)
-                .provider("MOCK_GATEWAY")
+                .provider(gateway.name())
                 .build();
+
+        PaymentGateway.GatewayOrder order = gateway.createOrder(new PaymentGateway.CreateOrderRequest(
+                payment.getMerchantRefId(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getMethod(),
+                "Medikit order " + payment.getOrderId(),
+                null));
+
+        payment.setMetadata(order.checkoutUrl() != null ? "{\"checkoutUrl\":\"" + order.checkoutUrl() + "\"}" : null);
 
         Payment saved = paymentRepository.save(payment);
         eventPublisher.publish(Topics.PAYMENT_INITIATED, saved.getOrderId().toString(),
@@ -89,13 +107,15 @@ public class PaymentService {
             return PaymentResponse.from(payment);
         }
 
-        // Mock gateway always succeeds unless amount exceeds threshold
-        if (payment.getAmount().compareTo(new BigDecimal("100000")) > 0) {
+        PaymentGateway.GatewayResult result = gateway.capture(
+                payment.getMerchantRefId(), payment.getAmount(), payment.getCurrency());
+
+        if (!result.success()) {
             payment.setStatus(Payment.PaymentStatus.FAILED);
-            payment.setFailureReason("Amount exceeds single transaction limit");
+            payment.setFailureReason(result.message());
             paymentRepository.save(payment);
             eventPublisher.publish(Topics.PAYMENT_FAILED, orderId,
-                    Map.of("orderId", orderId, "reason", "Amount exceeds single transaction limit"));
+                    Map.of("orderId", orderId, "reason", result.message()));
             return PaymentResponse.from(payment);
         }
 
@@ -109,6 +129,13 @@ public class PaymentService {
                         "orderId", orderId,
                         "amount", payment.getAmount(),
                         "currency", payment.getCurrency()));
+
+        auditService.record(AuditService.AuditAction.PAYMENT_CAPTURED, null, "SYSTEM", "payment",
+                payment.getId().toString(), Map.of(
+                        "orderId", payment.getOrderId().toString(),
+                        "amount", payment.getAmount(),
+                        "currency", payment.getCurrency(),
+                        "provider", payment.getProvider()));
 
         log.info("Payment {} captured for order {}", payment.getId(), orderId);
         return PaymentResponse.from(payment);
@@ -126,8 +153,23 @@ public class PaymentService {
             throw new BadRequestException("Refund amount exceeds payment amount");
         }
 
+        BigDecimal refundAmount = request.amount() != null ? request.amount() : payment.getAmount();
+        PaymentGateway.GatewayResult result = gateway.refund(
+                payment.getMerchantRefId(), refundAmount, payment.getCurrency());
+
+        if (!result.success()) {
+            throw new IllegalStateException("Refund failed at gateway: " + result.message());
+        }
+
         payment.setStatus(Payment.PaymentStatus.REFUNDED);
         paymentRepository.save(payment);
+
+        auditService.record(AuditService.AuditAction.PAYMENT_REFUNDED, null, "SYSTEM", "payment",
+                payment.getId().toString(), Map.of(
+                        "orderId", payment.getOrderId().toString(),
+                        "amount", refundAmount,
+                        "currency", payment.getCurrency()));
+
         log.info("Payment {} refunded for order {}", payment.getId(), request.orderId());
         return PaymentResponse.from(payment);
     }
@@ -135,6 +177,58 @@ public class PaymentService {
     public PaymentResponse getByOrder(String orderId) {
         return PaymentResponse.from(paymentRepository.findByOrderId(UUID.fromString(orderId))
                 .orElseThrow(() -> new NotFoundException("Payment not found")));
+    }
+
+    /**
+     * Handle a gateway webhook. Maps provider events to internal state and
+     * emits the corresponding domain event.
+     */
+    @Transactional
+    public void handleWebhook(String rawBody, Map<String, String> headers) {
+        PaymentGateway.WebhookEvent event = gateway.parseWebhook(rawBody, headers);
+        if (event.providerRef() == null || event.providerRef().isBlank()) {
+            return;
+        }
+        Payment payment = paymentRepository.findByMerchantRefId(event.providerRef())
+                .orElse(null);
+        if (payment == null) {
+            log.warn("Webhook for unknown merchant ref {}", event.providerRef());
+            return;
+        }
+        if (event.status() == null || event.status().isBlank()) {
+            return;
+        }
+        switch (event.status().toLowerCase()) {
+            case "captured", "succeeded", "authorized" -> {
+                if (payment.getStatus() != Payment.PaymentStatus.COMPLETED) {
+                    payment.setStatus(Payment.PaymentStatus.COMPLETED);
+                    payment.setCaptured(true);
+                    payment.setCapturedAt(Instant.now());
+                    paymentRepository.save(payment);
+                    eventPublisher.publish(Topics.PAYMENT_COMPLETED, payment.getOrderId().toString(),
+                            Map.of("paymentId", payment.getId().toString(),
+                                    "orderId", payment.getOrderId().toString(),
+                                    "amount", payment.getAmount(),
+                                    "currency", payment.getCurrency()));
+                }
+            }
+            case "failed", "declined" -> {
+                if (payment.getStatus() != Payment.PaymentStatus.FAILED) {
+                    payment.setStatus(Payment.PaymentStatus.FAILED);
+                    payment.setFailureReason("Webhook status: " + event.status());
+                    paymentRepository.save(payment);
+                    eventPublisher.publish(Topics.PAYMENT_FAILED, payment.getOrderId().toString(),
+                            Map.of("orderId", payment.getOrderId().toString(), "reason", event.status()));
+                }
+            }
+            case "refunded" -> {
+                payment.setStatus(Payment.PaymentStatus.REFUNDED);
+                paymentRepository.save(payment);
+                eventPublisher.publish(Topics.PAYMENT_REFUNDED, payment.getOrderId().toString(),
+                        Map.of("orderId", payment.getOrderId().toString()));
+            }
+            default -> log.debug("Ignoring webhook status {}", event.status());
+        }
     }
 
     private String generateRefId() {
