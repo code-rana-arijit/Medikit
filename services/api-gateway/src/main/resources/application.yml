@@ -84,6 +84,10 @@ spring:
           uri: lb://health-service
           predicates:
             - Path=/api/v1/health/**
+        - id: loyalty-service
+          uri: lb://loyalty-service
+          predicates:
+            - Path=/api/v1/loyalty/**
       default-filters:
         - name: CircuitBreaker
           args:

@@ -325,6 +325,24 @@ services:
       - "8111:8111"
     profiles: ["all", "services"]
 
+  loyalty-service:
+    build: ./services/loyalty-service
+    container_name: medikit-loyalty
+    depends_on:
+      - discovery-server
+      - redis
+      - kafka
+      - postgres
+    environment:
+      EUREKA_SERVER: http://admin:admin@discovery-server:8761/eureka/
+      DB_URL: jdbc:postgresql://postgres:5432/medikit_loyalty
+      DB_USERNAME: medikit
+      DB_PASSWORD: medikit
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8112:8112"
+    profiles: ["all", "services"]
+
 volumes:
   postgres_data:
   redis_data:

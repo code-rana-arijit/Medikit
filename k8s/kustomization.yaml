@@ -27,6 +27,7 @@ resources:
   - ../deployments/prescription-service.yaml
   - ../deployments/search-service.yaml
   - ../deployments/health-service.yaml
+  - ../deployments/loyalty-service.yaml
   - ../hpa/api-gateway-hpa.yaml
   - ../hpa/user-service-hpa.yaml
   - ../hpa/product-service-hpa.yaml
@@ -39,6 +40,7 @@ resources:
   - ../hpa/prescription-service-hpa.yaml
   - ../hpa/search-service-hpa.yaml
   - ../hpa/health-service-hpa.yaml
+  - ../hpa/loyalty-service-hpa.yaml
   - ../scale/priority-classes.yaml
   - ../scale/pdbs.yaml
   - ../scale/network-policies.yaml

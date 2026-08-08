@@ -80,6 +80,7 @@ graph TD
     G -->|"/api/v1/products"| PS["Product Service"]
     G -->|"/api/v1/search"| SS["Search Service"]
     G -->|"/api/v1/health"| HS["Health Service"]
+    G -->|"/api/v1/loyalty"| LS["Loyalty Service"]
     G -->|"/api/v1/inventory"| IS["Inventory Service"]
     G -->|"/api/v1/cart"| CS["Cart Service"]
     G -->|"/api/v1/orders"| OS["Order Service"]
@@ -97,6 +98,7 @@ graph TD
     PS --> PubSub
     SS --> PubSub
     NS --> PubSub
+    LS --> PubSub
     PubSub -->|"ORDER_CONFIRMED"| DelS
     PubSub -->|"DELIVERY_UPDATED"| OS
 
@@ -150,6 +152,7 @@ graph TD
 | 12 | `prescription-service` | 8109 | Prescription upload/validation/expiry | medikit_prescriptions |
 | 13 | `search-service` | 8110 | Redis search index, autocomplete | Redis |
 | 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis, prescription analysis, assistant chat | medikit_health |
+| 15 | `loyalty-service` | 8112 | Points ledger, tier progression, redemptions | medikit_loyalty |
 ---
 
 ## High-Level Design: The Order Saga
@@ -258,6 +261,13 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] **Prescription OCR & AI validation** - medical-entity extraction from prescription text (OCR-ready), resolves brands to salts, cross-checks against order items and the interaction KB
 - [x] **AI assistant chat API** - intent detection + plain-English clinical summaries over symptom/interaction/prescription analysis; rule-based composer by default, optional env-gated LLM backend
 
+### Phase 9 - Engagement & Retention
+#### Phase 9a - Loyalty Program (IN PROGRESS)
+- [x] **Points ledger** - `loyalty-service` earns points on every confirmed order (`ORDER_CONFIRMED` event); idempotent by `orderId` so Kafka at-least-once replays are safe
+- [x] **Tier progression** - BRONZE → SILVER → GOLD → PLATINUM by cumulative spend, with earn multipliers (1.0 / 1.1 / 1.25 / 1.5)
+- [x] **Redemption** - users redeem points for in-memory `MEDIKIT-` discount codes; unit-based ratio (100 pts → ₹10)
+- [ ] **Reward promotion engine** - optional; coupon/discount service integration as a future hook
+
 ---
 
 ## Scaling to 50,000 Concurrent Users
@@ -278,6 +288,7 @@ Assumes ~2,000 requests/sec ingress, ~500 orders/sec peak:
 | payment-service | 500 | 2-15 | Idempotency | Redis idempotency keys |
 | search-service | 800 | 2-10 | Redis set ops | Inverted index, token sets |
 | health-service | 100 | 2-8 | KB lookups | Indexed pairs, pre-resolved salts, condition cache |
+| loyalty-service | 200 | 2-8 | DB writes | Indexed orderId/userId, idempotent awards |
 
 ### Key Scalability Decisions
 1. **Database per service** - independent scale, no cross-service joins, no shared locks
@@ -348,7 +359,7 @@ docker compose down
 ```
 
 Database defaults: `medikit` / `medikit`. Each service uses its own database:
-`medikit_users`, `medikit_products`, `medikit_inventory`, `medikit_orders`, `medikit_payments`, `medikit_delivery`, `medikit_prescriptions`, `medikit_health`.
+`medikit_users`, `medikit_products`, `medikit_inventory`, `medikit_orders`, `medikit_payments`, `medikit_delivery`, `medikit_prescriptions`, `medikit_health`, `medikit_loyalty`.
 
 ---
 
@@ -426,8 +437,13 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | GET | `/api/v1/health/conditions` | health | Public |
 | POST | `/api/v1/health/prescriptions/analyze` | health | Public |
 | POST | `/api/v1/health/assistant/chat` | health | Public |
+| GET | `/api/v1/loyalty/balance` | loyalty | Public |
+| GET | `/api/v1/loyalty/transactions` | loyalty | Public |
+| POST | `/api/v1/loyalty/redeem` | loyalty | Public |
 
 > **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies. `POST /api/v1/health/assistant/chat` accepts a free-text question plus optional context drugs, detects the intent, and returns a plain-English clinical summary (rule-based by default; optional LLM backend gated by `HEALTH_ASSISTANT_LLM_ENABLED` with `USER_HEALTH_LLM_*` env vars).
+
+> **Loyalty** - `GET /api/v1/loyalty/balance` returns the caller's point balance, tier, earn multiplier and next-tier threshold. `GET /api/v1/loyalty/transactions` pages the points ledger. `POST /api/v1/loyalty/redeem` with `{ "points": <n> }` (min 100) mints a `MEDIKIT-` discount code and debits the balance.
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -465,7 +481,8 @@ medikit/
 │   ├── notification-service/
 │   ├── prescription-service/
 │   ├── search-service/
-│   └── health-service/              # AI health intelligence
+│   ├── health-service/              # AI health intelligence
+│   └── loyalty-service/             # Points ledger, tiers, redemptions
 ├── k8s/                             # Kubernetes manifests
 │   ├── base/                        # namespace, configmaps, secrets
 │   ├── postgres/ redis/ kafka/ elasticsearch/

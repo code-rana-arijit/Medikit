@@ -22,7 +22,7 @@ case "$ACTION" in
     kubectl apply -f k8s/kafka/kafka.yaml
 
     echo ">> Applying service deployments"
-    for svc in discovery-server config-server api-gateway user-service product-service inventory-service cart-service order-service payment-service delivery-service notification-service prescription-service search-service health-service; do
+    for svc in discovery-server config-server api-gateway user-service product-service inventory-service cart-service order-service payment-service delivery-service notification-service prescription-service search-service health-service loyalty-service; do
       kubectl apply -f k8s/deployments/$svc.yaml
     done
 
@@ -34,7 +34,7 @@ case "$ACTION" in
 
     echo ">> Waiting for rollout..."
     kubectl rollout status deployment -n $NS discovery-server config-server api-gateway --timeout=180s
-    kubectl rollout status deployment -n $NS user-service product-service inventory-service cart-service order-service payment-service delivery-service notification-service prescription-service search-service health-service --timeout=300s
+    kubectl rollout status deployment -n $NS user-service product-service inventory-service cart-service order-service payment-service delivery-service notification-service prescription-service search-service health-service loyalty-service --timeout=300s
     ;;
   rollout-status)
     kubectl rollout status deployment -n $NS --all --timeout=60s
