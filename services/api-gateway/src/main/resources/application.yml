@@ -88,6 +88,10 @@ spring:
           uri: lb://loyalty-service
           predicates:
             - Path=/api/v1/loyalty/**
+        - id: discount-service
+          uri: lb://discount-service
+          predicates:
+            - Path=/api/v1/discounts/**
       default-filters:
         - name: CircuitBreaker
           args:

@@ -343,6 +343,22 @@ services:
       - "8112:8112"
     profiles: ["all", "services"]
 
+  discount-service:
+    build: ./services/discount-service
+    container_name: medikit-discount
+    depends_on:
+      - discovery-server
+      - redis
+      - postgres
+    environment:
+      EUREKA_SERVER: http://admin:admin@discovery-server:8761/eureka/
+      DB_URL: jdbc:postgresql://postgres:5432/medikit_discounts
+      DB_USERNAME: medikit
+      DB_PASSWORD: medikit
+    ports:
+      - "8113:8113"
+    profiles: ["all", "services"]
+
 volumes:
   postgres_data:
   redis_data:

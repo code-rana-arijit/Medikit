@@ -2,6 +2,7 @@ package com.medikit.order.service;
 
 import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.NotFoundException;
+import com.medikit.order.client.DiscountClient;
 import com.medikit.order.dto.CreateOrderRequest;
 import com.medikit.order.dto.OrderResponse;
 import com.medikit.order.entity.Order;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -31,10 +33,14 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderSagaOrchestrator sagaOrchestrator;
+    private final DiscountClient discountClient;
 
-    public OrderService(OrderRepository orderRepository, OrderSagaOrchestrator sagaOrchestrator) {
+    public OrderService(OrderRepository orderRepository,
+                        OrderSagaOrchestrator sagaOrchestrator,
+                        DiscountClient discountClient) {
         this.orderRepository = orderRepository;
         this.sagaOrchestrator = sagaOrchestrator;
+        this.discountClient = discountClient;
     }
 
     @Transactional
@@ -48,7 +54,10 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .max(BigDecimal.ZERO);
 
-        BigDecimal total = subtotal.add(DELIVERY_FEE);
+        BigDecimal couponDiscount = applyDiscountCode(userId, request.discountCode());
+
+        BigDecimal total = subtotal.add(DELIVERY_FEE).subtract(couponDiscount).max(BigDecimal.ZERO);
+        BigDecimal combinedDiscount = discount.add(couponDiscount);
 
         Order order = Order.builder()
                 .userId(userId)
@@ -57,7 +66,7 @@ public class OrderService {
                 .status(OrderStatus.CREATED)
                 .subtotal(subtotal)
                 .deliveryFee(DELIVERY_FEE)
-                .discount(discount)
+                .discount(combinedDiscount)
                 .total(total)
                 .paymentMethod(request.paymentMethod())
                 .paymentStatus("PENDING")
@@ -79,6 +88,8 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         log.info("Order {} created for user {}", saved.getId(), userId);
+
+        redeemDiscountCode(userId, request.discountCode(), saved.getId());
 
         boolean reserved = sagaOrchestrator.reserveInventory(saved);
         if (reserved) {
@@ -135,6 +146,45 @@ public class OrderService {
                 .stream()
                 .map(OrderResponse::from)
                 .toList();
+    }
+
+    private void redeemDiscountCode(UUID userId, String discountCode, UUID orderId) {
+        if (discountCode == null || discountCode.isBlank()) {
+            return;
+        }
+        try {
+            discountClient.redeem(Map.of(
+                    "code", discountCode,
+                    "userId", userId.toString(),
+                    "orderId", orderId.toString()));
+        } catch (Exception e) {
+            log.error("Discount code redemption failed for order {}", orderId, e);
+            throw new BadRequestException("Discount code could not be redeemed");
+        }
+    }
+
+    private BigDecimal applyDiscountCode(UUID userId, String discountCode) {
+        if (discountCode == null || discountCode.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            Object response = discountClient.validate(Map.of(
+                    "code", discountCode,
+                    "userId", userId.toString()));
+            if (!(response instanceof java.util.Map<?, ?> map)) {
+                throw new BadRequestException("Invalid discount code");
+            }
+            Object amount = map.get("discountAmount");
+            if (amount == null) {
+                throw new BadRequestException("Invalid discount code");
+            }
+            return new BigDecimal(amount.toString()).max(BigDecimal.ZERO);
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Discount code validation failed for order", e);
+            throw new BadRequestException("Discount code could not be validated");
+        }
     }
 
     private Order findOrder(UUID orderId) {

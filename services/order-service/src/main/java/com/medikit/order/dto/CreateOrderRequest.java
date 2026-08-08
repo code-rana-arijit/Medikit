@@ -22,7 +22,9 @@ public record CreateOrderRequest(
         AddressInfo address,
 
         String paymentMethod,
-        String deliverySlotId
+        String deliverySlotId,
+
+        String discountCode
 ) {
 
     public record OrderItemRequest(

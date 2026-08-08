@@ -1,6 +1,7 @@
 package com.medikit.loyalty.service;
 
 import com.medikit.common.web.BadRequestException;
+import com.medikit.loyalty.client.DiscountClient;
 import com.medikit.loyalty.config.LoyaltyProperties;
 import com.medikit.loyalty.dto.LoyaltyBalanceResponse;
 import com.medikit.loyalty.dto.RedeemResponse;
@@ -18,12 +19,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +40,9 @@ class LoyaltyServiceTest {
     @Mock
     private PointsTransactionRepository transactionRepository;
 
+    @Mock
+    private DiscountClient discountClient;
+
     private LoyaltyService loyaltyService;
 
     @Captor
@@ -46,7 +52,7 @@ class LoyaltyServiceTest {
 
     @BeforeEach
     void setUp() {
-        loyaltyService = new LoyaltyService(accountRepository, transactionRepository, LoyaltyProperties.defaults());
+        loyaltyService = new LoyaltyService(accountRepository, transactionRepository, LoyaltyProperties.defaults(), discountClient);
     }
 
     @Test
@@ -120,15 +126,30 @@ class LoyaltyServiceTest {
         LoyaltyAccount account = LoyaltyAccount.create(userId);
         account.setBalancePoints(500);
         when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(account));
+        when(discountClient.issue(anyMap())).thenReturn(Map.of("code", "MEDIKIT-12345678"));
+
+        RedeemResponse response = loyaltyService.redeem(userId, 200);
+
+        assertThat(response.code()).isEqualTo("MEDIKIT-12345678");
+        assertThat(response.pointsRedeemed()).isEqualTo(200);
+        assertThat(response.discountAmount()).isEqualTo(new BigDecimal("20"));
+        assertThat(response.remainingBalance()).isEqualTo(300);
+        verify(discountClient).issue(anyMap());
+        verify(accountRepository).save(accountCaptor.capture());
+        assertThat(accountCaptor.getValue().getBalancePoints()).isEqualTo(300);
+    }
+
+    @Test
+    void redeemFallsBackToLocalCodeWhenDiscountServiceUnavailable() {
+        LoyaltyAccount account = LoyaltyAccount.create(userId);
+        account.setBalancePoints(500);
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(account));
+        when(discountClient.issue(anyMap())).thenThrow(new RuntimeException("down"));
 
         RedeemResponse response = loyaltyService.redeem(userId, 200);
 
         assertThat(response.code()).startsWith("MEDIKIT-");
-        assertThat(response.pointsRedeemed()).isEqualTo(200);
-        assertThat(response.discountAmount()).isEqualTo(new BigDecimal("20"));
         assertThat(response.remainingBalance()).isEqualTo(300);
-        verify(accountRepository).save(accountCaptor.capture());
-        assertThat(accountCaptor.getValue().getBalancePoints()).isEqualTo(300);
     }
 
     @Test

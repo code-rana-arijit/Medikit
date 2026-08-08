@@ -1,6 +1,7 @@
 package com.medikit.loyalty.service;
 
 import com.medikit.common.web.BadRequestException;
+import com.medikit.loyalty.client.DiscountClient;
 import com.medikit.loyalty.config.LoyaltyProperties;
 import com.medikit.loyalty.dto.LoyaltyBalanceResponse;
 import com.medikit.loyalty.dto.PointsTransactionDto;
@@ -11,6 +12,8 @@ import com.medikit.loyalty.model.LoyaltyTier;
 import com.medikit.loyalty.model.TransactionType;
 import com.medikit.loyalty.repository.LoyaltyAccountRepository;
 import com.medikit.loyalty.repository.PointsTransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,21 +23,27 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class LoyaltyService {
 
+    private static final Logger log = LoggerFactory.getLogger(LoyaltyService.class);
+
     private final LoyaltyAccountRepository accountRepository;
     private final PointsTransactionRepository transactionRepository;
     private final LoyaltyProperties properties;
+    private final DiscountClient discountClient;
 
     public LoyaltyService(LoyaltyAccountRepository accountRepository,
                           PointsTransactionRepository transactionRepository,
-                          LoyaltyProperties properties) {
+                          LoyaltyProperties properties,
+                          DiscountClient discountClient) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.properties = properties;
+        this.discountClient = discountClient;
     }
 
     @Transactional
@@ -114,11 +123,31 @@ public class LoyaltyService {
                 .createdAt(Instant.now())
                 .build());
 
+        String code = issueDiscountCode(userId, discount);
+
         return new RedeemResponse(
-                generateCode(userId),
+                code,
                 consumed,
                 discount,
                 account.getBalancePoints());
+    }
+
+    private String issueDiscountCode(UUID userId, BigDecimal discount) {
+        try {
+            Object issued = discountClient.issue(Map.of(
+                    "userId", userId.toString(),
+                    "discountAmount", discount,
+                    "validForDays", 30));
+            if (issued instanceof java.util.Map<?, ?> map) {
+                Object code = map.get("code");
+                if (code != null) {
+                    return code.toString();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to issue discount code for user {}", userId, e);
+        }
+        return generateCode();
     }
 
     @Transactional
@@ -159,7 +188,7 @@ public class LoyaltyService {
         return LoyaltyTier.values()[nextOrdinal];
     }
 
-    private String generateCode(UUID userId) {
+    private String generateCode() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         return "MEDIKIT-" + suffix;
     }
