@@ -1,5 +1,7 @@
 package com.medikit.health.controller;
 
+import com.medikit.health.dto.AssistantChatRequest;
+import com.medikit.health.dto.AssistantChatResponse;
 import com.medikit.health.dto.InteractionCheckRequest;
 import com.medikit.health.dto.InteractionCheckResponse;
 import com.medikit.health.dto.InteractionDto;
@@ -13,6 +15,7 @@ import com.medikit.health.entity.DrugInteraction;
 import com.medikit.health.repository.ConditionRemedyRepository;
 import com.medikit.health.repository.DrugInteractionRepository;
 import com.medikit.health.service.DrugInteractionChecker;
+import com.medikit.health.service.HealthAssistantService;
 import com.medikit.health.service.PrescriptionAnalyzerService;
 import com.medikit.health.service.SymptomRecommenderService;
 import jakarta.validation.Valid;
@@ -37,17 +40,20 @@ public class HealthIntelligenceController {
     private final SymptomRecommenderService symptomRecommenderService;
     private final ConditionRemedyRepository conditionRemedyRepository;
     private final PrescriptionAnalyzerService prescriptionAnalyzerService;
+    private final HealthAssistantService healthAssistantService;
 
     public HealthIntelligenceController(DrugInteractionChecker interactionChecker,
                                         DrugInteractionRepository interactionRepository,
                                         SymptomRecommenderService symptomRecommenderService,
                                         ConditionRemedyRepository conditionRemedyRepository,
-                                        PrescriptionAnalyzerService prescriptionAnalyzerService) {
+                                        PrescriptionAnalyzerService prescriptionAnalyzerService,
+                                        HealthAssistantService healthAssistantService) {
         this.interactionChecker = interactionChecker;
         this.interactionRepository = interactionRepository;
         this.symptomRecommenderService = symptomRecommenderService;
         this.conditionRemedyRepository = conditionRemedyRepository;
         this.prescriptionAnalyzerService = prescriptionAnalyzerService;
+        this.healthAssistantService = healthAssistantService;
     }
 
     @PostMapping("/interactions/check")
@@ -86,5 +92,10 @@ public class HealthIntelligenceController {
     public PrescriptionAnalysisResponse analyzePrescription(
             @Valid @RequestBody PrescriptionAnalyzeRequest request) {
         return prescriptionAnalyzerService.analyze(request.text(), request.orderItems());
+    }
+
+    @PostMapping("/assistant/chat")
+    public AssistantChatResponse chat(@Valid @RequestBody AssistantChatRequest request) {
+        return healthAssistantService.chat(request.message(), request.contextDrugs());
     }
 }

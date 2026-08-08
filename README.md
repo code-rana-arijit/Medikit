@@ -149,7 +149,7 @@ graph TD
 | 11 | `notification-service` | 8108 | Email/SMS/push (mock providers) | - |
 | 12 | `prescription-service` | 8109 | Prescription upload/validation/expiry | medikit_prescriptions |
 | 13 | `search-service` | 8110 | Redis search index, autocomplete | Redis |
-| 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis, prescription analysis | medikit_health |
+| 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis, prescription analysis, assistant chat | medikit_health |
 ---
 
 ## High-Level Design: The Order Saga
@@ -252,11 +252,11 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] GDPR/HIPAA-style audit logging, data retention policies
 - [x] Disaster recovery: cross-region replication, RPO/RTO targets
 
-### Phase 8 - AI Health Intelligence (IN PROGRESS)
+### Phase 8 - AI Health Intelligence (DONE)
 - [x] **Drug interaction checker** - `health-service` with a seeded interaction KB (salt pairs, severity, clinical advice); resolves brand names to salts, flags contraindicated/major interactions
 - [x] **Symptom-based medicine recommender** - rule-based symptom → condition → medicine reasoning engine with ranked suggestions + safety disclaimers
 - [x] **Prescription OCR & AI validation** - medical-entity extraction from prescription text (OCR-ready), resolves brands to salts, cross-checks against order items and the interaction KB
-- [ ] **AI assistant chat API** - compose symptom analysis + interaction checks + prescription findings into a plain-English clinical summary (env-gated LLM backend, rule-based default)
+- [x] **AI assistant chat API** - intent detection + plain-English clinical summaries over symptom/interaction/prescription analysis; rule-based composer by default, optional env-gated LLM backend
 
 ---
 
@@ -425,8 +425,9 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | POST | `/api/v1/health/symptoms/analyze` | health | Public |
 | GET | `/api/v1/health/conditions` | health | Public |
 | POST | `/api/v1/health/prescriptions/analyze` | health | Public |
+| POST | `/api/v1/health/assistant/chat` | health | Public |
 
-> **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies.
+> **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies. `POST /api/v1/health/assistant/chat` accepts a free-text question plus optional context drugs, detects the intent, and returns a plain-English clinical summary (rule-based by default; optional LLM backend gated by `HEALTH_ASSISTANT_LLM_ENABLED` with `USER_HEALTH_LLM_*` env vars).
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -487,7 +488,7 @@ medikit/
 - [ ] Phase 6: Scale hardening for 50K concurrent users (9/11 done; service mesh + chaos engineering remain)
 - [x] Real payment providers, SMS/email providers, object storage
 - [x] Phase 7: Production compliance (audit, retention, DR, pharmacist verification)
-- [ ] Phase 8: AI Health Intelligence (8a drug interaction checker + 8b symptom recommender + 8c prescription analysis done; AI assistant chat pending)
+- [x] Phase 8: AI Health Intelligence (interaction checker, symptom recommender, prescription analysis, assistant chat API)
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
 - [ ] Pharmacist dashboard web app
 
