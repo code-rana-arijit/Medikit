@@ -82,3 +82,4 @@ medikit:
     spend-per-point: ${LOYALTY_SPEND_PER_POINT:100}
     points-per-redemption-unit: ${LOYALTY_POINTS_PER_UNIT:100}
     redemption-unit-value: ${LOYALTY_REDEMPTION_UNIT_VALUE:10}
+    referral-bonus-points: ${LOYALTY_REFERRAL_BONUS_POINTS:100}

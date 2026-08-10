@@ -7,6 +7,8 @@ import com.medikit.loyalty.dto.LoyaltyBalanceResponse;
 import com.medikit.loyalty.dto.PointsTransactionDto;
 import com.medikit.loyalty.dto.RedeemRequest;
 import com.medikit.loyalty.dto.RedeemResponse;
+import com.medikit.loyalty.dto.RegisterReferralRequest;
+import com.medikit.loyalty.dto.ReferralCodeResponse;
 import com.medikit.loyalty.service.LoyaltyService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -47,6 +49,16 @@ public class LoyaltyController {
     @PostMapping("/redeem")
     public ResponseEntity<RedeemResponse> redeem(@Valid @RequestBody RedeemRequest request) {
         return ResponseEntity.ok(loyaltyService.redeem(currentUserId(), request.points()));
+    }
+
+    @GetMapping("/referral")
+    public ResponseEntity<ReferralCodeResponse> referralCode() {
+        return ResponseEntity.ok(loyaltyService.getReferralCode(currentUserId()));
+    }
+
+    @PostMapping("/referrals/register")
+    public ResponseEntity<ReferralCodeResponse> registerReferral(@Valid @RequestBody RegisterReferralRequest request) {
+        return ResponseEntity.ok(loyaltyService.registerReferral(currentUserId(), request.referralCode()));
     }
 
     private UUID currentUserId() {

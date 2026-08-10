@@ -8,7 +8,8 @@ import java.math.BigDecimal;
 public record LoyaltyProperties(
         BigDecimal spendPerPoint,
         BigDecimal pointsPerRedemptionUnit,
-        BigDecimal redemptionUnitValue) {
+        BigDecimal redemptionUnitValue,
+        Long referralBonusPoints) {
 
     public LoyaltyProperties {
         if (spendPerPoint == null || spendPerPoint.signum() <= 0) {
@@ -20,9 +21,12 @@ public record LoyaltyProperties(
         if (redemptionUnitValue == null || redemptionUnitValue.signum() < 0) {
             redemptionUnitValue = new BigDecimal("10");
         }
+        if (referralBonusPoints == null || referralBonusPoints <= 0) {
+            referralBonusPoints = 100L;
+        }
     }
 
     public static LoyaltyProperties defaults() {
-        return new LoyaltyProperties(new BigDecimal("100"), new BigDecimal("100"), new BigDecimal("10"));
+        return new LoyaltyProperties(new BigDecimal("100"), new BigDecimal("100"), new BigDecimal("10"), 100L);
     }
 }

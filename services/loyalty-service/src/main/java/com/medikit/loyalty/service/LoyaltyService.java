@@ -6,6 +6,7 @@ import com.medikit.loyalty.config.LoyaltyProperties;
 import com.medikit.loyalty.dto.LoyaltyBalanceResponse;
 import com.medikit.loyalty.dto.PointsTransactionDto;
 import com.medikit.loyalty.dto.RedeemResponse;
+import com.medikit.loyalty.dto.ReferralCodeResponse;
 import com.medikit.loyalty.entity.LoyaltyAccount;
 import com.medikit.loyalty.entity.PointsTransaction;
 import com.medikit.loyalty.model.LoyaltyTier;
@@ -72,6 +73,69 @@ public class LoyaltyService {
                 .description("Earned for order " + orderId)
                 .createdAt(Instant.now())
                 .build());
+
+        rewardReferrerIfFirstOrder(account, orderId);
+    }
+
+    private void rewardReferrerIfFirstOrder(LoyaltyAccount referredAccount, UUID orderId) {
+        if (referredAccount.getReferredBy() == null || referredAccount.isReferralBonusGranted()) {
+            return;
+        }
+        LoyaltyAccount referrer = accountRepository.findByUserId(referredAccount.getReferredBy()).orElse(null);
+        if (referrer == null) {
+            return;
+        }
+        long bonus = properties.referralBonusPoints();
+
+        referrer.setBalancePoints(referrer.getBalancePoints() + bonus);
+        referrer.setLifetimeEarned(referrer.getLifetimeEarned() + bonus);
+        referrer.setUpdatedAt(Instant.now());
+        accountRepository.save(referrer);
+
+        transactionRepository.save(PointsTransaction.builder()
+                .userId(referrer.getUserId())
+                .orderId(orderId)
+                .type(TransactionType.REFERRAL)
+                .points(bonus)
+                .description("Referral bonus for order " + orderId)
+                .createdAt(Instant.now())
+                .build());
+
+        referredAccount.setReferralBonusGranted(true);
+        accountRepository.save(referredAccount);
+        log.info("Referral bonus {} granted to user {} via user {}", bonus, referrer.getUserId(), referredAccount.getUserId());
+    }
+
+    @Transactional(readOnly = true)
+    public ReferralCodeResponse getReferralCode(UUID userId) {
+        LoyaltyAccount account = getOrCreate(userId);
+        return new ReferralCodeResponse(
+                account.getReferralCode(),
+                "https://medikit.app/ref/" + account.getReferralCode());
+    }
+
+    @Transactional
+    public ReferralCodeResponse registerReferral(UUID userId, String referralCode) {
+        String code = referralCode.trim();
+        if (code.isBlank()) {
+            throw new BadRequestException("Referral code is required");
+        }
+        LoyaltyAccount referrer = accountRepository.findByReferralCode(code)
+                .orElseThrow(() -> new BadRequestException("Referral code not found"));
+        if (referrer.getUserId().equals(userId)) {
+            throw new BadRequestException("You cannot refer yourself");
+        }
+        LoyaltyAccount account = getOrCreate(userId);
+        if (account.getReferredBy() != null) {
+            throw new BadRequestException("Referral already registered");
+        }
+        account.setReferredBy(referrer.getUserId());
+        account.setUpdatedAt(Instant.now());
+        accountRepository.save(account);
+        log.info("User {} registered via referral code of user {}", userId, referrer.getUserId());
+        return new ReferralCodeResponse(
+                account.getReferralCode(),
+                "https://medikit.app/ref/" + account.getReferralCode());
     }
 
     @Transactional(readOnly = true)

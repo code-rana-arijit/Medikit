@@ -185,4 +185,83 @@ class LoyaltyServiceTest {
 
         assertThat(account.getBalancePoints()).isEqualTo(200);
     }
+
+    @Test
+    void getReferralCodeReturnsCodeAndUrl() {
+        LoyaltyAccount account = LoyaltyAccount.create(userId);
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(account));
+
+        var response = loyaltyService.getReferralCode(userId);
+
+        assertThat(response.referralCode()).startsWith("REF-");
+        assertThat(response.referralUrl()).contains(response.referralCode());
+    }
+
+    @Test
+    void registerReferralLinksReferredUserToReferrer() {
+        LoyaltyAccount referrer = LoyaltyAccount.create(UUID.randomUUID());
+        LoyaltyAccount account = LoyaltyAccount.create(userId);
+        when(accountRepository.findByReferralCode(referrer.getReferralCode())).thenReturn(Optional.of(referrer));
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(account));
+
+        loyaltyService.registerReferral(userId, referrer.getReferralCode());
+
+        assertThat(account.getReferredBy()).isEqualTo(referrer.getUserId());
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    void registerReferralRejectsSelfReferral() {
+        LoyaltyAccount account = LoyaltyAccount.create(userId);
+        when(accountRepository.findByReferralCode(account.getReferralCode())).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> loyaltyService.registerReferral(userId, account.getReferralCode()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("refer yourself");
+    }
+
+    @Test
+    void registerReferralRejectsDuplicate() {
+        LoyaltyAccount referrer = LoyaltyAccount.create(UUID.randomUUID());
+        LoyaltyAccount account = LoyaltyAccount.create(userId);
+        account.setReferredBy(referrer.getUserId());
+        when(accountRepository.findByReferralCode(referrer.getReferralCode())).thenReturn(Optional.of(referrer));
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> loyaltyService.registerReferral(userId, referrer.getReferralCode()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("already registered");
+    }
+
+    @Test
+    void awardsReferrerBonusOnReferredUsersFirstOrder() {
+        UUID referrerId = UUID.randomUUID();
+        LoyaltyAccount referrer = LoyaltyAccount.create(referrerId);
+        referrer.setBalancePoints(50);
+        LoyaltyAccount referred = LoyaltyAccount.create(userId);
+        referred.setReferredBy(referrerId);
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(referred));
+        when(accountRepository.findByUserId(referrerId)).thenReturn(Optional.of(referrer));
+
+        loyaltyService.awardPoints(userId, UUID.randomUUID(), new BigDecimal("500"));
+
+        assertThat(referrer.getBalancePoints()).isEqualTo(150);
+        assertThat(referred.isReferralBonusGranted()).isTrue();
+        verify(accountRepository).save(referrer);
+    }
+
+    @Test
+    void doesNotAwardReferrerBonusTwice() {
+        UUID referrerId = UUID.randomUUID();
+        LoyaltyAccount referrer = LoyaltyAccount.create(referrerId);
+        LoyaltyAccount referred = LoyaltyAccount.create(userId);
+        referred.setReferredBy(referrerId);
+        referred.setReferralBonusGranted(true);
+        when(accountRepository.findByUserId(userId)).thenReturn(Optional.of(referred));
+
+        loyaltyService.awardPoints(userId, UUID.randomUUID(), new BigDecimal("500"));
+
+        assertThat(referrer.getBalancePoints()).isZero();
+        assertThat(referred.isReferralBonusGranted()).isTrue();
+    }
 }

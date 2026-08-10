@@ -278,6 +278,11 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] **Checkout discount** - `order-service` accepts an optional `discountCode`; validated against `discount-service` and applied to the order total
 - [x] **Promotion campaigns** - `discount-service` campaigns with batch-issued codes: fixed amount or percentage-off, with first-order-only flags
 
+#### Phase 9d - Referral Program (DONE)
+- [x] **Referral codes** - every loyalty account gets a unique `REF-` code; `GET /api/v1/loyalty/referral` returns it with a shareable URL
+- [x] **Referral registration** - `POST /api/v1/loyalty/referrals/register` binds a user to a referrer (idempotent, self-referral guard)
+- [x] **Referrer rewards** - when the referred user's first order is confirmed, the referrer earns a points bonus (once), recorded as a `REFERRAL` ledger transaction
+
 ---
 
 ## Scaling to 50,000 Concurrent Users
@@ -451,6 +456,8 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | GET | `/api/v1/loyalty/balance` | loyalty | Public |
 | GET | `/api/v1/loyalty/transactions` | loyalty | Public |
 | POST | `/api/v1/loyalty/redeem` | loyalty | Public |
+| GET | `/api/v1/loyalty/referral` | loyalty | Public |
+| POST | `/api/v1/loyalty/referrals/register` | loyalty | Public |
 | POST | `/api/v1/discounts/issue` | discount | Public |
 | POST | `/api/v1/discounts/validate` | discount | Public |
 | POST | `/api/v1/discounts/redeem` | discount | Public |
@@ -462,7 +469,7 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 
 > **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies. `POST /api/v1/health/assistant/chat` accepts a free-text question plus optional context drugs, detects the intent, and returns a plain-English clinical summary (rule-based by default; optional LLM backend gated by `HEALTH_ASSISTANT_LLM_ENABLED` with `USER_HEALTH_LLM_*` env vars).
 
-> **Loyalty** - `GET /api/v1/loyalty/balance` returns the caller's point balance, tier, earn multiplier and next-tier threshold. `GET /api/v1/loyalty/transactions` pages the points ledger. `POST /api/v1/loyalty/redeem` with `{ "points": <n> }` (min 100) mints a `MEDIKIT-` discount code and debits the balance.
+> **Loyalty** - `GET /api/v1/loyalty/balance` returns the caller's point balance, tier, earn multiplier and next-tier threshold. `GET /api/v1/loyalty/transactions` pages the points ledger. `POST /api/v1/loyalty/redeem` with `{ "points": <n> }` (min 100) mints a `MEDIKIT-` discount code and debits the balance. `GET /api/v1/loyalty/referral` returns the caller's referral code and shareable URL. `POST /api/v1/loyalty/referrals/register` with `{ "referralCode": "REF-XXXX" }` attributes the caller to a referrer, who earns a bonus when the caller's first order is confirmed.
 
 > **Discounts** - `POST /api/v1/discounts/issue` creates a single-use, user-scoped code with a 30-day expiry. `POST /api/v1/discounts/validate` checks a code is active, unexpired and owned by the caller. `POST /api/v1/discounts/redeem` marks it used against an order. `GET /api/v1/discounts/my` pages the caller's issued codes. `order-service` validates and applies the code at checkout. `POST /api/v1/campaigns` creates a promotion campaign and batch-issues up to 10,000 codes (fixed amount or percentage-off, optionally first-order-only); `GET /api/v1/campaigns/{id}/codes` lists a campaign's codes. Percentage codes are applied pro-rata against the subtotal, and first-order-only codes are rejected for returning users.
 

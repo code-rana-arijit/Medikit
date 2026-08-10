@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface LoyaltyAccountRepository extends JpaRepository<LoyaltyAccount, Long> {
 
     Optional<LoyaltyAccount> findByUserId(UUID userId);
+
+    Optional<LoyaltyAccount> findByReferralCode(String referralCode);
 }
