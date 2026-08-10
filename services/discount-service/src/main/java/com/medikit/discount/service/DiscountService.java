@@ -3,8 +3,10 @@ package com.medikit.discount.service;
 import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.NotFoundException;
 import com.medikit.discount.dto.DiscountCodeResponse;
+import com.medikit.discount.dto.IssueDiscountRequest;
 import com.medikit.discount.entity.DiscountCode;
 import com.medikit.discount.model.DiscountStatus;
+import com.medikit.discount.model.DiscountType;
 import com.medikit.discount.repository.DiscountCodeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,20 +34,39 @@ public class DiscountService {
     }
 
     @Transactional
-    public DiscountCodeResponse issue(UUID userId, BigDecimal discountAmount, Integer validForDays) {
-        int days = validForDays == null || validForDays <= 0 ? DEFAULT_VALID_FOR_DAYS : validForDays;
+    public DiscountCodeResponse issue(IssueDiscountRequest request) {
+        DiscountType type = request.effectiveType();
+        int days = request.validForDays() == null || request.validForDays() <= 0
+                ? DEFAULT_VALID_FOR_DAYS : request.validForDays();
+
         DiscountCode code = DiscountCode.builder()
                 .code(generateCode())
-                .userId(userId)
-                .discountAmount(discountAmount)
+                .userId(request.userId())
+                .discountType(type)
+                .discountAmount(type == DiscountType.FIXED ? request.discountAmount() : null)
+                .percentage(type == DiscountType.PERCENTAGE ? request.percentage() : null)
+                .campaignId(request.campaignId())
+                .title(request.title())
+                .firstOrderOnly(Boolean.TRUE.equals(request.firstOrderOnly()))
                 .currency("INR")
                 .status(DiscountStatus.ACTIVE)
                 .expiresAt(Instant.now().plus(days, ChronoUnit.DAYS))
                 .createdAt(Instant.now())
                 .build();
         repository.save(code);
-        log.info("Issued discount code {} for user {} worth {}", code.getCode(), userId, discountAmount);
+        log.info("Issued {} discount code {} for user {}", type, code.getCode(), request.userId());
         return toResponse(code);
+    }
+
+    @Transactional
+    public DiscountCodeResponse issue(UUID userId, BigDecimal discountAmount, Integer validForDays) {
+        return issue(new IssueDiscountRequest(userId, DiscountType.FIXED, discountAmount,
+                null, null, null, null, validForDays));
+    }
+
+    @Transactional
+    public DiscountCodeResponse issue(UUID userId, BigDecimal discountAmount) {
+        return issue(userId, discountAmount, null);
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +95,7 @@ public class DiscountService {
     private DiscountCode resolveValid(String code, UUID userId) {
         DiscountCode discount = repository.findByCode(code)
                 .orElseThrow(() -> new NotFoundException("Discount code not found"));
-        if (!discount.getUserId().equals(userId)) {
+        if (discount.getUserId() != null && !discount.getUserId().equals(userId)) {
             throw new BadRequestException("Discount code does not belong to this user");
         }
         if (discount.getStatus() != DiscountStatus.ACTIVE) {
@@ -95,7 +116,12 @@ public class DiscountService {
         return new DiscountCodeResponse(
                 discount.getCode(),
                 discount.getUserId(),
+                discount.getDiscountType() != null ? discount.getDiscountType().name() : DiscountType.FIXED.name(),
                 discount.getDiscountAmount(),
+                discount.getPercentage(),
+                discount.getCampaignId(),
+                discount.getTitle(),
+                discount.isFirstOrderOnly(),
                 discount.getCurrency(),
                 discount.getStatus().name(),
                 discount.getExpiresAt(),

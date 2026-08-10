@@ -91,7 +91,7 @@ spring:
         - id: discount-service
           uri: lb://discount-service
           predicates:
-            - Path=/api/v1/discounts/**
+            - Path=/api/v1/discounts/**,/api/v1/campaigns/**
       default-filters:
         - name: CircuitBreaker
           args:

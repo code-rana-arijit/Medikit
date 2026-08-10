@@ -157,7 +157,7 @@ graph TD
 | 13 | `search-service` | 8110 | Redis search index, autocomplete | Redis |
 | 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis, prescription analysis, assistant chat | medikit_health |
 | 15 | `loyalty-service` | 8112 | Points ledger, tier progression, redemptions | medikit_loyalty |
-| 16 | `discount-service` | 8113 | Discount codes: issue, validate, redeem lifecycle | medikit_discounts |
+| 16 | `discount-service` | 8113 | Discount codes: issue, validate, redeem lifecycle + promotion campaigns | medikit_discounts |
 ---
 
 ## High-Level Design: The Order Saga
@@ -276,7 +276,7 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] **Discount code lifecycle** - `discount-service` owns codes: issue, validate, redeem (single-use, owned by user, 30-day expiry)
 - [x] **Loyalty redemption integration** - `loyalty-service` issues redemption codes via `discount-service` (Feign), with local fallback if it is unavailable
 - [x] **Checkout discount** - `order-service` accepts an optional `discountCode`; validated against `discount-service` and applied to the order total
-- [ ] **Promotion campaigns** - batch issuance, percentage-off codes, first-order bonuses as a future hook
+- [x] **Promotion campaigns** - `discount-service` campaigns with batch-issued codes: fixed amount or percentage-off, with first-order-only flags
 
 ---
 
@@ -455,12 +455,16 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | POST | `/api/v1/discounts/validate` | discount | Public |
 | POST | `/api/v1/discounts/redeem` | discount | Public |
 | GET | `/api/v1/discounts/my` | discount | Public |
+| POST | `/api/v1/campaigns` | discount | Public |
+| GET | `/api/v1/campaigns` | discount | Public |
+| GET | `/api/v1/campaigns/{id}` | discount | Public |
+| GET | `/api/v1/campaigns/{id}/codes` | discount | Public |
 
 > **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies. `POST /api/v1/health/assistant/chat` accepts a free-text question plus optional context drugs, detects the intent, and returns a plain-English clinical summary (rule-based by default; optional LLM backend gated by `HEALTH_ASSISTANT_LLM_ENABLED` with `USER_HEALTH_LLM_*` env vars).
 
 > **Loyalty** - `GET /api/v1/loyalty/balance` returns the caller's point balance, tier, earn multiplier and next-tier threshold. `GET /api/v1/loyalty/transactions` pages the points ledger. `POST /api/v1/loyalty/redeem` with `{ "points": <n> }` (min 100) mints a `MEDIKIT-` discount code and debits the balance.
 
-> **Discounts** - `POST /api/v1/discounts/issue` creates a single-use, user-scoped code with a 30-day expiry. `POST /api/v1/discounts/validate` checks a code is active, unexpired and owned by the caller. `POST /api/v1/discounts/redeem` marks it used against an order. `GET /api/v1/discounts/my` pages the caller's issued codes. `order-service` validates and applies the code at checkout.
+> **Discounts** - `POST /api/v1/discounts/issue` creates a single-use, user-scoped code with a 30-day expiry. `POST /api/v1/discounts/validate` checks a code is active, unexpired and owned by the caller. `POST /api/v1/discounts/redeem` marks it used against an order. `GET /api/v1/discounts/my` pages the caller's issued codes. `order-service` validates and applies the code at checkout. `POST /api/v1/campaigns` creates a promotion campaign and batch-issues up to 10,000 codes (fixed amount or percentage-off, optionally first-order-only); `GET /api/v1/campaigns/{id}/codes` lists a campaign's codes. Percentage codes are applied pro-rata against the subtotal, and first-order-only codes are rejected for returning users.
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -500,7 +504,7 @@ medikit/
 │   ├── search-service/
 │   ├── health-service/              # AI health intelligence
 │   ├── loyalty-service/             # Points ledger, tiers, redemptions
-│   └── discount-service/            # Discount codes, coupons, redemption
+│   └── discount-service/            # Discount codes, campaigns, redemption
 ├── k8s/                             # Kubernetes manifests
 │   ├── base/                        # namespace, configmaps, secrets
 │   ├── postgres/ redis/ kafka/ elasticsearch/

@@ -120,4 +120,58 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.createOrder(userId, request))
                 .hasMessageContaining("could not be validated");
     }
+
+    @Test
+    void createOrder_appliesPercentageDiscountCode() {
+        var item = new CreateOrderRequest.OrderItemRequest(
+                UUID.randomUUID(),
+                "Paracetamol",
+                2,
+                new BigDecimal("10.00"),
+                new BigDecimal("15.00"),
+                false);
+        var address = new CreateOrderRequest.AddressInfo("123 Main St", 12.9, 77.6);
+        var request = new CreateOrderRequest(pharmacyId, List.of(item), address, "CARD", null, "PROMO-TEST1");
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order order = inv.getArgument(0);
+            order.setId(UUID.randomUUID());
+            return order;
+        });
+        when(orderRepository.findById(any())).thenReturn(java.util.Optional.empty());
+        when(sagaOrchestrator.reserveInventory(any())).thenReturn(true);
+        when(sagaOrchestrator.initiatePayment(any())).thenReturn(true);
+        when(discountClient.validate(anyMap())).thenReturn(Map.of(
+                "discountType", "PERCENTAGE",
+                "percentage", "10"));
+        when(discountClient.redeem(anyMap())).thenReturn(Map.of("status", "USED"));
+
+        var response = orderService.createOrder(userId, request);
+
+        // subtotal 20.00 * 10% = 2.00 off; total = 20 + 29 - 2 = 47.00
+        assertThat(response.discount()).isEqualByComparingTo("12.00");
+        assertThat(response.total()).isEqualByComparingTo("47.00");
+    }
+
+    @Test
+    void createOrder_rejectsFirstOrderOnlyCodeForExistingUser() {
+        var item = new CreateOrderRequest.OrderItemRequest(
+                UUID.randomUUID(),
+                "Paracetamol",
+                2,
+                new BigDecimal("10.00"),
+                new BigDecimal("15.00"),
+                false);
+        var address = new CreateOrderRequest.AddressInfo("123 Main St", 12.9, 77.6);
+        var request = new CreateOrderRequest(pharmacyId, List.of(item), address, "CARD", null, "WELCOME");
+
+        when(orderRepository.existsByUserId(userId)).thenReturn(true);
+        when(discountClient.validate(anyMap())).thenReturn(Map.of(
+                "discountType", "FIXED",
+                "discountAmount", "50",
+                "firstOrderOnly", true));
+
+        assertThatThrownBy(() -> orderService.createOrder(userId, request))
+                .hasMessageContaining("only valid on your first order");
+    }
 }

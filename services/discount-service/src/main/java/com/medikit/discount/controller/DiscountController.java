@@ -32,8 +32,7 @@ public class DiscountController {
 
     @PostMapping("/issue")
     public ResponseEntity<DiscountCodeResponse> issue(@Valid @RequestBody IssueDiscountRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                discountService.issue(request.userId(), request.discountAmount(), request.validForDays()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(discountService.issue(request));
     }
 
     @PostMapping("/validate")

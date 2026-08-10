@@ -7,7 +7,12 @@ import java.util.UUID;
 public record DiscountCodeResponse(
         String code,
         UUID userId,
+        String discountType,
         BigDecimal discountAmount,
+        BigDecimal percentage,
+        UUID campaignId,
+        String title,
+        boolean firstOrderOnly,
         String currency,
         String status,
         Instant expiresAt,

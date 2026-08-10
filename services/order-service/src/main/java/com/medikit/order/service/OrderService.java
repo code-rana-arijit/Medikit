@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -54,7 +55,7 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .max(BigDecimal.ZERO);
 
-        BigDecimal couponDiscount = applyDiscountCode(userId, request.discountCode());
+        BigDecimal couponDiscount = applyDiscountCode(userId, request.discountCode(), subtotal);
 
         BigDecimal total = subtotal.add(DELIVERY_FEE).subtract(couponDiscount).max(BigDecimal.ZERO);
         BigDecimal combinedDiscount = discount.add(couponDiscount);
@@ -163,7 +164,7 @@ public class OrderService {
         }
     }
 
-    private BigDecimal applyDiscountCode(UUID userId, String discountCode) {
+    private BigDecimal applyDiscountCode(UUID userId, String discountCode, BigDecimal subtotal) {
         if (discountCode == null || discountCode.isBlank()) {
             return BigDecimal.ZERO;
         }
@@ -173,6 +174,20 @@ public class OrderService {
                     "userId", userId.toString()));
             if (!(response instanceof java.util.Map<?, ?> map)) {
                 throw new BadRequestException("Invalid discount code");
+            }
+            if (Boolean.TRUE.equals(map.get("firstOrderOnly")) && orderRepository.existsByUserId(userId)) {
+                throw new BadRequestException("Discount code is only valid on your first order");
+            }
+            Object type = map.get("discountType");
+            String typeName = type == null ? "FIXED" : String.valueOf(type);
+            if ("PERCENTAGE".equalsIgnoreCase(typeName)) {
+                Object percentage = map.get("percentage");
+                if (percentage == null) {
+                    throw new BadRequestException("Invalid discount code");
+                }
+                BigDecimal percent = new BigDecimal(percentage.toString());
+                return subtotal.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN)
+                        .max(BigDecimal.ZERO);
             }
             Object amount = map.get("discountAmount");
             if (amount == null) {

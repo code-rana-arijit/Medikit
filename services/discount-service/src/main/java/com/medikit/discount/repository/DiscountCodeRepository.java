@@ -23,5 +23,9 @@ public interface DiscountCodeRepository extends JpaRepository<DiscountCode, Long
 
     Page<DiscountCode> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
+    Page<DiscountCode> findByCampaignIdOrderByCreatedAtDesc(UUID campaignId, Pageable pageable);
+
+    long countByCampaignId(UUID campaignId);
+
     long countByUserIdAndStatus(UUID userId, DiscountStatus status);
 }

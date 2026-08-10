@@ -1,6 +1,7 @@
 package com.medikit.discount.entity;
 
 import com.medikit.discount.model.DiscountStatus;
+import com.medikit.discount.model.DiscountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,7 +26,8 @@ import java.util.UUID;
         name = "discount_codes",
         indexes = {
                 @Index(name = "idx_discount_code_user", columnList = "user_id"),
-                @Index(name = "idx_discount_code_status", columnList = "status")
+                @Index(name = "idx_discount_code_status", columnList = "status"),
+                @Index(name = "idx_discount_code_campaign", columnList = "campaign_id")
         })
 @Getter
 @Setter
@@ -41,11 +43,29 @@ public class DiscountCode {
     @Column(name = "code", nullable = false, unique = true, length = 40)
     private String code;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(name = "discount_amount", nullable = false, precision = 12, scale = 2)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_type", nullable = false, length = 20)
+    @Builder.Default
+    private DiscountType discountType = DiscountType.FIXED;
+
+    @Column(name = "discount_amount", precision = 12, scale = 2)
     private BigDecimal discountAmount;
+
+    @Column(name = "percentage", precision = 5, scale = 2)
+    private BigDecimal percentage;
+
+    @Column(name = "campaign_id")
+    private UUID campaignId;
+
+    @Column(name = "title", length = 100)
+    private String title;
+
+    @Column(name = "first_order_only", nullable = false)
+    @Builder.Default
+    private boolean firstOrderOnly = false;
 
     @Column(name = "currency", nullable = false, length = 10)
     @Builder.Default

@@ -3,8 +3,10 @@ package com.medikit.discount.service;
 import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.NotFoundException;
 import com.medikit.discount.dto.DiscountCodeResponse;
+import com.medikit.discount.dto.IssueDiscountRequest;
 import com.medikit.discount.entity.DiscountCode;
 import com.medikit.discount.model.DiscountStatus;
+import com.medikit.discount.model.DiscountType;
 import com.medikit.discount.repository.DiscountCodeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +65,34 @@ class DiscountServiceTest {
         verify(repository).save(codeCaptor.capture());
         DiscountCode saved = codeCaptor.getValue();
         assertThat(saved.getExpiresAt()).isBefore(Instant.now().plus(11, ChronoUnit.DAYS));
+    }
+
+    @Test
+    void issuePercentageCodeStoresPercentageOnly() {
+        IssueDiscountRequest request = new IssueDiscountRequest(
+                userId, DiscountType.PERCENTAGE, null, new BigDecimal("10"),
+                null, "Spring Sale", false, 30);
+
+        DiscountCodeResponse response = discountService.issue(request);
+
+        assertThat(response.discountType()).isEqualTo(DiscountType.PERCENTAGE.name());
+        assertThat(response.percentage()).isEqualByComparingTo("10");
+        assertThat(response.discountAmount()).isNull();
+        assertThat(response.title()).isEqualTo("Spring Sale");
+    }
+
+    @Test
+    void validateAcceptsCampaignCodeWithoutOwner() {
+        DiscountCode discount = activeCode();
+        discount.setUserId(null);
+        discount.setCampaignId(UUID.randomUUID());
+        discount.setFirstOrderOnly(true);
+        when(repository.findByCode("MEDIKIT-ABC")).thenReturn(Optional.of(discount));
+
+        DiscountCodeResponse response = discountService.validate("MEDIKIT-ABC", userId);
+
+        assertThat(response.status()).isEqualTo(DiscountStatus.ACTIVE.name());
+        assertThat(response.firstOrderOnly()).isTrue();
     }
 
     @Test
