@@ -158,6 +158,7 @@ graph TD
 | 14 | `health-service` | 8111 | AI health intelligence: drug interactions, symptom analysis, prescription analysis, assistant chat | medikit_health |
 | 15 | `loyalty-service` | 8112 | Points ledger, tier progression, redemptions | medikit_loyalty |
 | 16 | `discount-service` | 8113 | Discount codes: issue, validate, redeem lifecycle + promotion campaigns | medikit_discounts |
+| 17 | `distributor-service` | 8114 | Distributor portal: B2B wholesale supply + B2C retail fulfillment | medikit_distributors |
 ---
 
 ## High-Level Design: The Order Saga
@@ -283,6 +284,17 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] **Referral registration** - `POST /api/v1/loyalty/referrals/register` binds a user to a referrer (idempotent, self-referral guard)
 - [x] **Referrer rewards** - when the referred user's first order is confirmed, the referrer earns a points bonus (once), recorded as a `REFERRAL` ledger transaction
 
+### Phase 10 - Distributor Portal (DONE)
+#### Phase 10a - Distributor Onboarding & B2B Supply
+- [x] **Distributor role** - `user-service` gains a `DISTRIBUTOR` role; any medical shop can sign in and self-upgrade via `PUT /api/v1/users/me/role`
+- [x] **Distributor profile** - `distributor-service` lets shops register shop name, license, address and city; public directory lists active distributors
+- [x] **Wholesale catalog** - distributors maintain a B2B catalog (product, pack size, unit price, stock) with add/update/delete operations
+- [x] **B2B supply orders** - shops place wholesale stock orders (`DB2B-` order numbers) with inventory deduction, and full status workflow: PENDING → CONFIRMED → SHIPPED → DELIVERED (cancellation restores stock)
+
+#### Phase 10b - B2C Retail Fulfillment
+- [x] **Retail fulfillment** - distributors claim customer retail orders via `order-service` (Feign), tracking CLAIMED → PICKED_UP → IN_TRANSIT → DELIVERED
+- [x] **Fulfillment guardrails** - one distributor per order, self-order rejection, strict status transitions, cross-distributor access control
+
 ---
 
 ## Scaling to 50,000 Concurrent Users
@@ -305,6 +317,7 @@ Assumes ~2,000 requests/sec ingress, ~500 orders/sec peak:
 | health-service | 100 | 2-8 | KB lookups | Indexed pairs, pre-resolved salts, condition cache |
 | loyalty-service | 200 | 2-8 | DB writes | Indexed orderId/userId, idempotent awards |
 | discount-service | 300 | 2-8 | DB reads | Unique code lookup, active-only scans |
+| distributor-service | 300 | 2-8 | DB writes | Indexed buyer/distributor/order-number, stock rows locked on B2B order |
 
 ### Key Scalability Decisions
 1. **Database per service** - independent scale, no cross-service joins, no shared locks
@@ -466,12 +479,29 @@ Required secrets: `KUBE_CONFIG`, `SONAR_TOKEN`, `SONAR_HOST_URL`.
 | GET | `/api/v1/campaigns` | discount | Public |
 | GET | `/api/v1/campaigns/{id}` | discount | Public |
 | GET | `/api/v1/campaigns/{id}/codes` | discount | Public |
+| PUT | `/api/v1/users/me/role` | user | Bearer |
+| POST | `/api/v1/distributors/register` | distributor | Bearer |
+| GET | `/api/v1/distributors/me` | distributor | Bearer |
+| GET | `/api/v1/distributors` | distributor | Public |
+| GET | `/api/v1/distributors/{id}/catalog` | distributor | Public |
+| POST | `/api/v1/distributors/me/catalog` | distributor | Bearer |
+| PUT | `/api/v1/distributors/me/catalog/{itemId}` | distributor | Bearer |
+| DELETE | `/api/v1/distributors/me/catalog/{itemId}` | distributor | Bearer |
+| POST | `/api/v1/distributor-orders` | distributor | Bearer |
+| PATCH | `/api/v1/distributor-orders/{id}/status` | distributor | Bearer |
+| GET | `/api/v1/distributor-orders` | distributor | Bearer |
+| GET | `/api/v1/distributor-orders/distributor` | distributor | Bearer |
+| POST | `/api/v1/fulfillments/claim` | distributor | Bearer |
+| PATCH | `/api/v1/fulfillments/{id}/status` | distributor | Bearer |
+| GET | `/api/v1/fulfillments` | distributor | Bearer |
 
 > **AI Health Intelligence** - `POST /api/v1/health/interactions/check` accepts a list of drug names (brands or salts), resolves them to canonical salts, and returns all known interactions with severity (contraindicated / major / moderate / minor) plus clinical advice. `POST /api/v1/health/symptoms/analyze` maps reported symptoms to probable conditions, ranks them by accumulated confidence, and recommends OTC / prescription remedies with safety flags (including urgent-action alerts for red-flag symptoms). `POST /api/v1/health/prescriptions/analyze` extracts medicine names from OCR'd/typed prescription text, resolves brands to salts, cross-checks against the order items, and flags drug interactions and order discrepancies. `POST /api/v1/health/assistant/chat` accepts a free-text question plus optional context drugs, detects the intent, and returns a plain-English clinical summary (rule-based by default; optional LLM backend gated by `HEALTH_ASSISTANT_LLM_ENABLED` with `USER_HEALTH_LLM_*` env vars).
 
 > **Loyalty** - `GET /api/v1/loyalty/balance` returns the caller's point balance, tier, earn multiplier and next-tier threshold. `GET /api/v1/loyalty/transactions` pages the points ledger. `POST /api/v1/loyalty/redeem` with `{ "points": <n> }` (min 100) mints a `MEDIKIT-` discount code and debits the balance. `GET /api/v1/loyalty/referral` returns the caller's referral code and shareable URL. `POST /api/v1/loyalty/referrals/register` with `{ "referralCode": "REF-XXXX" }` attributes the caller to a referrer, who earns a bonus when the caller's first order is confirmed.
 
 > **Discounts** - `POST /api/v1/discounts/issue` creates a single-use, user-scoped code with a 30-day expiry. `POST /api/v1/discounts/validate` checks a code is active, unexpired and owned by the caller. `POST /api/v1/discounts/redeem` marks it used against an order. `GET /api/v1/discounts/my` pages the caller's issued codes. `order-service` validates and applies the code at checkout. `POST /api/v1/campaigns` creates a promotion campaign and batch-issues up to 10,000 codes (fixed amount or percentage-off, optionally first-order-only); `GET /api/v1/campaigns/{id}/codes` lists a campaign's codes. Percentage codes are applied pro-rata against the subtotal, and first-order-only codes are rejected for returning users.
+
+> **Distributor Portal** - any medical shop can self-upgrade to `DISTRIBUTOR` via `PUT /api/v1/users/me/role`, then register its profile at `POST /api/v1/distributors/register`. `GET /api/v1/distributors` lists active distributors; `GET /api/v1/distributors/{id}/catalog` shows a distributor's wholesale catalog. Shops place B2B supply orders at `POST /api/v1/distributor-orders` (stock deducted on placement, `DB2B-` order number); the distributor moves orders through PENDING → CONFIRMED → SHIPPED → DELIVERED via `PATCH /api/v1/distributor-orders/{id}/status` (cancellation restores stock). For B2C, a distributor claims a customer retail order at `POST /api/v1/fulfillments/claim` (verified against `order-service`) and tracks it CLAIMED → PICKED_UP → IN_TRANSIT → DELIVERED via `PATCH /api/v1/fulfillments/{id}/status`.
 
 Full interactive docs: each service exposes Swagger UI at `/swagger-ui.html`.
 
@@ -512,6 +542,7 @@ medikit/
 │   ├── health-service/              # AI health intelligence
 │   ├── loyalty-service/             # Points ledger, tiers, redemptions
 │   └── discount-service/            # Discount codes, campaigns, redemption
+│   └── distributor-service/         # Distributor portal: B2B supply + B2C fulfillment
 ├── k8s/                             # Kubernetes manifests
 │   ├── base/                        # namespace, configmaps, secrets
 │   ├── postgres/ redis/ kafka/ elasticsearch/
@@ -535,8 +566,9 @@ medikit/
 - [x] Real payment providers, SMS/email providers, object storage
 - [x] Phase 7: Production compliance (audit, retention, DR, pharmacist verification)
 - [x] Phase 8: AI Health Intelligence (interaction checker, symptom recommender, prescription analysis, assistant chat API)
+- [x] Phase 10: Distributor Portal (B2B wholesale supply + B2C retail fulfillment)
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
-- [ ] Pharmacist dashboard web app
+- [ ] Distributor dashboard web app (static HTML/JS against distributor-service APIs)
 
 ---
 

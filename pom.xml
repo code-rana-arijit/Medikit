@@ -37,6 +37,7 @@
         <module>services/health-service</module>
         <module>services/loyalty-service</module>
         <module>services/discount-service</module>
+        <module>services/distributor-service</module>
     </modules>
 
     <properties>

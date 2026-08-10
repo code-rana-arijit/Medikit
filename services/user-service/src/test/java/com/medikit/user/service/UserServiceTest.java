@@ -1,8 +1,10 @@
 package com.medikit.user.service;
 
+import com.medikit.common.web.BadRequestException;
 import com.medikit.user.dto.RegisterRequest;
 import com.medikit.user.dto.UserResponse;
 import com.medikit.user.entity.User;
+import com.medikit.user.entity.UserRole;
 import com.medikit.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,5 +63,32 @@ class UserServiceTest {
 
         assertThatThrownBy(() -> userService.getProfile(UUID.randomUUID()))
                 .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void upgradeRole_upgradesCustomerToDistributor() {
+        user.setRole(UserRole.CUSTOMER);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        UserResponse response = userService.upgradeRole(user.getId(), "DISTRIBUTOR");
+
+        assertThat(response.role()).isEqualTo("DISTRIBUTOR");
+        assertThat(user.getRole()).isEqualTo(UserRole.DISTRIBUTOR);
+    }
+
+    @Test
+    void upgradeRole_rejectsAdminRole() {
+        assertThatThrownBy(() -> userService.upgradeRole(user.getId(), "ADMIN"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void upgradeRole_rejectsDeliveryPartnerRoleChange() {
+        user.setRole(UserRole.DELIVERY_PARTNER);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.upgradeRole(user.getId(), "DISTRIBUTOR"))
+                .isInstanceOf(BadRequestException.class);
     }
 }

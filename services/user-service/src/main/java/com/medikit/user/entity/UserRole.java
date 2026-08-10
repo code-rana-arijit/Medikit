@@ -4,5 +4,6 @@ public enum UserRole {
     CUSTOMER,
     PHARMACIST,
     DELIVERY_PARTNER,
+    DISTRIBUTOR,
     ADMIN
 }

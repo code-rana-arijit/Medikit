@@ -1,7 +1,9 @@
 package com.medikit.user.service;
 
+import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.ConflictException;
 import com.medikit.common.web.NotFoundException;
+import com.medikit.user.entity.UserRole;
 import com.medikit.user.dto.AddressRequest;
 import com.medikit.user.dto.AddressResponse;
 import com.medikit.user.dto.UpdateProfileRequest;
@@ -44,6 +46,28 @@ public class UserService {
             user.setEmail(request.email().toLowerCase());
             user.setEmailVerified(false);
         }
+        return toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse upgradeRole(UUID userId, String requestedRole) {
+        UserRole target;
+        try {
+            target = UserRole.valueOf(requestedRole.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid role");
+        }
+        if (target != UserRole.DISTRIBUTOR && target != UserRole.PHARMACIST) {
+            throw new BadRequestException("Role upgrade only allowed to DISTRIBUTOR or PHARMACIST");
+        }
+        User user = findUser(userId);
+        if (user.getRole() == UserRole.ADMIN || user.getRole() == target) {
+            return toResponse(user);
+        }
+        if (user.getRole() == UserRole.DELIVERY_PARTNER) {
+            throw new BadRequestException("Cannot change role of a delivery partner");
+        }
+        user.setRole(target);
         return toResponse(userRepository.save(user));
     }
 

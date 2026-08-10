@@ -3,6 +3,7 @@ package com.medikit.user.controller;
 import com.medikit.common.security.UserContext;
 import com.medikit.user.dto.AddressRequest;
 import com.medikit.user.dto.AddressResponse;
+import com.medikit.user.dto.RoleUpgradeRequest;
 import com.medikit.user.dto.UpdateProfileRequest;
 import com.medikit.user.dto.UserResponse;
 import com.medikit.user.service.UserService;
@@ -40,6 +41,11 @@ public class UserController {
     @PutMapping("/me")
     public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(userService.updateProfile(UUID.fromString(UserContext.currentUserId()), request));
+    }
+
+    @PutMapping("/me/role")
+    public ResponseEntity<UserResponse> upgradeRole(@Valid @RequestBody RoleUpgradeRequest request) {
+        return ResponseEntity.ok(userService.upgradeRole(UUID.fromString(UserContext.currentUserId()), request.role()));
     }
 
     @GetMapping("/me/addresses")
