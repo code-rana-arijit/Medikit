@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout, { distributorNav } from '../../components/DashboardLayout';
 import { api, fmtINR } from '../../lib/api';
 import { Card, Button, Select, StatusBadge, Spinner, EmptyState, Alert } from '../../components/ui';
-import { ShoppingCart, ArrowRight } from 'lucide-react';
+import { ShoppingCart, ArrowRight, ChevronDown, ChevronUp, Boxes } from 'lucide-react';
 
 const NEXT_STATUS = {
   PENDING: 'CONFIRMED',
@@ -17,6 +17,7 @@ export default function DistributorOrders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -42,26 +43,61 @@ export default function DistributorOrders() {
     } catch (e) { setError(e.message); }
   };
 
-  const renderRow = (o, isIncoming) => (
-    <Card key={o.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-      <div className="min-w-0">
-        <p className="font-semibold text-slate-900">{o.orderNumber}</p>
-        <p className="text-xs text-slate-500">
-          {new Date(o.createdAt).toLocaleString('en-IN')} · {o.items.length} item(s)
-        </p>
-        <p className="mt-1 text-sm font-bold text-slate-800">{fmtINR(o.totalAmount)}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <StatusBadge status={o.status} />
-        {isIncoming && NEXT_STATUS[o.status] && (
-          <Button size="sm" variant="secondary" onClick={() => advance(o.id)}>
-            {NEXT_STATUS[o.status] === 'CONFIRMED' ? 'Confirm' : NEXT_STATUS[o.status] === 'SHIPPED' ? 'Ship' : 'Deliver'}
-            <ArrowRight className="ml-1 h-3.5 w-3.5" />
-          </Button>
+  const renderRow = (o, isIncoming) => {
+    const isOpen = expanded === o.id;
+    return (
+      <Card key={o.id} className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <button
+            onClick={() => setExpanded(isOpen ? null : o.id)}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Boxes className="h-4.5 w-4.5" /></span>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-900">{o.orderNumber}</p>
+              <p className="text-xs text-slate-500">
+                {new Date(o.createdAt).toLocaleString('en-IN')} · {o.items.length} item(s) · updated {new Date(o.updatedAt).toLocaleString('en-IN')}
+              </p>
+            </div>
+          </button>
+          <div className="flex items-center gap-3">
+            <p className="font-bold text-slate-900">{fmtINR(o.totalAmount)}</p>
+            <StatusBadge status={o.status} />
+            {isIncoming && NEXT_STATUS[o.status] && (
+              <Button size="sm" variant="secondary" onClick={() => advance(o.id)}>
+                {NEXT_STATUS[o.status] === 'CONFIRMED' ? 'Confirm' : NEXT_STATUS[o.status] === 'SHIPPED' ? 'Ship' : 'Deliver'}
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            )}
+            <button onClick={() => setExpanded(isOpen ? null : o.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {isOpen && (
+          <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-4">
+            <div className="mb-3 grid gap-3 text-xs text-slate-500 sm:grid-cols-3">
+              <div><span className="font-semibold text-slate-700">Order ID</span><p className="font-mono">{o.id}</p></div>
+              <div><span className="font-semibold text-slate-700">Buyer</span><p className="font-mono">{isIncoming ? o.buyerUserId : 'You'}</p></div>
+              <div><span className="font-semibold text-slate-700">Distributor</span><p className="font-mono">{o.distributorId}</p></div>
+            </div>
+            <div className="space-y-2">
+              {o.items.map((it, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-white px-4 py-2.5 text-sm">
+                  <div>
+                    <p className="font-medium text-slate-800">{it.productName}</p>
+                    <p className="text-xs text-slate-400">{fmtINR(it.unitPrice)} × {it.quantity}</p>
+                  </div>
+                  <p className="font-bold text-slate-900">{fmtINR(it.subtotal)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-      </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <DashboardLayout title="Supply Orders" subtitle="Wholesale supply" navItems={distributorNav}>

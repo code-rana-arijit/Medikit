@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { SearchInput, Select, EmptyState, Button, Spinner, Badge } from '../components/ui';
 import ProductCard from '../components/ProductCard';
-import { SearchX, SlidersHorizontal } from 'lucide-react';
+import { SearchX, SlidersHorizontal, TrendingUp } from 'lucide-react';
 
 export default function Products() {
   const [params, setParams] = useSearchParams();
@@ -14,6 +14,10 @@ export default function Products() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSugg, setShowSugg] = useState(false);
+  const suggTimer = useRef();
+  const inputWrap = useRef();
   const [filters, setFilters] = useState({
     category: params.get('category') || '',
     type: params.get('type') || '',
@@ -59,7 +63,24 @@ export default function Products() {
     load(0);
   }, [filters]);
 
-  const runSearch = () => load(0);
+  useEffect(() => {
+    if (suggTimer.current) clearTimeout(suggTimer.current);
+    if (query.trim().length < 2) { setSuggestions([]); return; }
+    suggTimer.current = setTimeout(() => {
+      api.get(`/search/suggest?q=${encodeURIComponent(query.trim())}`)
+        .then((r) => { setSuggestions(r || []); setShowSugg(true); })
+        .catch(() => setSuggestions([]));
+    }, 250);
+    return () => clearTimeout(suggTimer.current);
+  }, [query]);
+
+  useEffect(() => {
+    const onClick = (e) => { if (inputWrap.current && !inputWrap.current.contains(e.target)) setShowSugg(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  const runSearch = () => { setShowSugg(false); load(0); };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -68,8 +89,24 @@ export default function Products() {
         <p className="text-sm text-slate-500">Search by medicine, brand or salt name</p>
       </div>
 
-      <div className="mb-6 max-w-2xl">
+      <div className="relative mb-6 max-w-2xl" ref={inputWrap}>
         <SearchInput value={query} onChange={setQuery} onSearch={runSearch} />
+        {showSugg && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+            <div className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <TrendingUp className="h-3.5 w-3.5" /> Suggestions
+            </div>
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setQuery(s); setShowSugg(false); load(0); }}
+                className="block w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth';
 import { cx } from './ui';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, Truck, ClipboardList,
-  Boxes, Pill, LogOut,
+  Boxes, Pill, LogOut, ShieldCheck, Ticket, Gift, Users,
 } from 'lucide-react';
 
 const linkCls = ({ isActive }) =>
@@ -81,4 +81,14 @@ export const pharmacyNav = [
   { to: '/pharmacy', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/pharmacy/orders', label: 'Orders', icon: ClipboardList },
   { to: '/pharmacy/inventory', label: 'Inventory', icon: Boxes },
+  { to: '/pharmacy/slots', label: 'Delivery Slots', icon: Truck },
+];
+
+export const adminNav = [
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/verifications', label: 'Pharmacist Verifications', icon: ShieldCheck },
+  { to: '/admin/campaigns', label: 'Promotions', icon: Ticket },
+  { to: '/admin/discounts', label: 'Issue Coupons', icon: Gift },
+  { to: '/admin/products', label: 'Products & Categories', icon: Package },
+  { to: '/admin/users', label: 'Platform Overview', icon: Users },
 ];

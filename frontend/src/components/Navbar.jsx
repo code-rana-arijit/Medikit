@@ -34,8 +34,11 @@ export default function Navbar() {
           <NavLink to="/products" className={navLink}>Medicines</NavLink>
           <NavLink to="/health" className={navLink}>Health Tools</NavLink>
           {user && <NavLink to="/orders" className={navLink}>Orders</NavLink>}
+          {user && <NavLink to="/prescriptions" className={navLink}>Prescriptions</NavLink>}
+          {user && <NavLink to="/discounts" className={navLink}>Coupons</NavLink>}
           {user?.role === 'DISTRIBUTOR' && <NavLink to="/distributor" className={navLink}>Distributor</NavLink>}
           {user?.role === 'PHARMACIST' && <NavLink to="/pharmacy" className={navLink}>Pharmacy</NavLink>}
+          {user?.role === 'ADMIN' && <NavLink to="/admin" className={navLink}>Admin</NavLink>}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -74,9 +77,12 @@ export default function Navbar() {
             <NavLink to="/products" className={navLink} onClick={() => setOpen(false)}>Medicines</NavLink>
             <NavLink to="/health" className={navLink} onClick={() => setOpen(false)}>Health Tools</NavLink>
             {user && <NavLink to="/orders" className={navLink} onClick={() => setOpen(false)}>Orders</NavLink>}
+            {user && <NavLink to="/prescriptions" className={navLink} onClick={() => setOpen(false)}>Prescriptions</NavLink>}
+            {user && <NavLink to="/discounts" className={navLink} onClick={() => setOpen(false)}>Coupons</NavLink>}
             {user && <NavLink to="/account" className={navLink} onClick={() => setOpen(false)}>Account</NavLink>}
             {user?.role === 'DISTRIBUTOR' && <NavLink to="/distributor" className={navLink} onClick={() => setOpen(false)}>Distributor</NavLink>}
             {user?.role === 'PHARMACIST' && <NavLink to="/pharmacy" className={navLink} onClick={() => setOpen(false)}>Pharmacy</NavLink>}
+            {user?.role === 'ADMIN' && <NavLink to="/admin" className={navLink} onClick={() => setOpen(false)}>Admin</NavLink>}
             {!user && (
               <div className="mt-2 flex gap-2">
                 <Link to="/login" className="flex-1"><Button variant="secondary" className="w-full">Sign in</Button></Link>
@@ -110,6 +116,9 @@ export function Footer() {
             <li><Link to="/products?type=OTC" className="hover:text-brand-600">OTC</Link></li>
             <li><Link to="/products?rx=1" className="hover:text-brand-600">Prescription</Link></li>
             <li><Link to="/health" className="hover:text-brand-600">Health tools</Link></li>
+            <li><Link to="/campaigns" className="hover:text-brand-600">Offers & campaigns</Link></li>
+            <li><Link to="/discounts" className="hover:text-brand-600">My coupons</Link></li>
+            <li><Link to="/prescriptions" className="hover:text-brand-600">Prescriptions</Link></li>
           </ul>
         </div>
         <div>

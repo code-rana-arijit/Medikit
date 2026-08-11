@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api, fmtINR } from '../lib/api';
 import { Button, Card, StatusBadge, Spinner, Alert } from '../components/ui';
-import { ArrowLeft, Truck, XCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Truck, XCircle, FileText, MapPinned } from 'lucide-react';
+import DeliveryTimeline from '../components/DeliveryTimeline';
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -94,6 +95,14 @@ export default function OrderDetail() {
             <h2 className="font-bold text-slate-900">Delivery address</h2>
             <p className="mt-2 text-sm text-slate-600">{order.deliveryAddress}</p>
             {order.deliverySlotId && <p className="mt-1 text-xs text-slate-400">Slot ID: {order.deliverySlotId}</p>}
+          </Card>
+
+          <Card className="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <MapPinned className="h-5 w-5 text-brand-600" />
+              <h2 className="font-bold text-slate-900">Track delivery</h2>
+            </div>
+            <DeliveryTimeline orderId={order.id} createdAt={order.createdAt} />
           </Card>
         </div>
 
