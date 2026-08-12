@@ -2,7 +2,9 @@ package com.medikit.delivery.service;
 
 import com.medikit.common.event.EventPublisher;
 import com.medikit.common.event.Topics;
+import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.ConflictException;
+import com.medikit.common.web.ForbiddenException;
 import com.medikit.common.web.NotFoundException;
 import com.medikit.delivery.dto.DeliveryResponse;
 import com.medikit.delivery.dto.DeliveryStatusRequest;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -54,8 +57,32 @@ public class DeliveryService {
     }
 
     @Transactional
-    public DeliveryResponse updateStatus(UUID orderId, DeliveryStatus status, DeliveryStatusRequest.Coordinates coordinates) {
+    public DeliveryResponse claim(UUID orderId, UUID partnerId) {
         Delivery delivery = findDelivery(orderId);
+        if (delivery.getStatus() == DeliveryStatus.CANCELLED) {
+            throw new ConflictException("Cannot claim cancelled delivery");
+        }
+        if (delivery.getPartnerId() != null) {
+            throw new ConflictException("Delivery already assigned to a partner");
+        }
+        delivery.setPartnerId(partnerId);
+        delivery.setStatus(DeliveryStatus.ASSIGNED);
+        redisTemplate.opsForValue().set(PARTNER_KEY_PREFIX + partnerId, "ONLINE");
+        Delivery saved = deliveryRepository.save(delivery);
+        eventPublisher.publish(Topics.DELIVERY_ASSIGNED, orderId.toString(), saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public DeliveryResponse updateStatus(UUID orderId, DeliveryStatus status,
+                                         DeliveryStatusRequest.Coordinates coordinates, UUID callerId) {
+        Delivery delivery = findDelivery(orderId);
+        if (delivery.getPartnerId() == null) {
+            throw new BadRequestException("Delivery has no assigned partner yet");
+        }
+        if (status != DeliveryStatus.CANCELLED) {
+            validatePartner(delivery.getPartnerId(), callerId);
+        }
         delivery.setStatus(status);
         if (coordinates != null) {
             delivery.setPartnerLatitude(coordinates.latitude());
@@ -69,8 +96,29 @@ public class DeliveryService {
         return toResponse(saved);
     }
 
+    public List<DeliveryResponse> myDeliveries(UUID partnerId, DeliveryStatus status) {
+        List<Delivery> deliveries = status == null
+                ? deliveryRepository.findByPartnerId(partnerId)
+                : deliveryRepository.findByPartnerIdAndStatusIn(partnerId, List.of(status));
+        return deliveries.stream().map(this::toResponse).toList();
+    }
+
+    public List<DeliveryResponse> availableDeliveries() {
+        return deliveryRepository.findByPartnerIdIsNullAndStatus(DeliveryStatus.PENDING)
+                .stream().map(this::toResponse).toList();
+    }
+
     public DeliveryResponse track(UUID orderId) {
         return toResponse(findDelivery(orderId));
+    }
+
+    private void validatePartner(UUID partnerId, UUID callerId) {
+        if (callerId == null) {
+            throw new ForbiddenException("Missing X-User-Id header");
+        }
+        if (!callerId.equals(partnerId)) {
+            throw new ForbiddenException("Only the assigned delivery partner can update this delivery");
+        }
     }
 
     private Delivery findDelivery(UUID orderId) {

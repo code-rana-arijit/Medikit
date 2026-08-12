@@ -2,7 +2,9 @@ package com.medikit.user.service;
 
 import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.ConflictException;
+import com.medikit.common.web.ForbiddenException;
 import com.medikit.common.web.NotFoundException;
+import com.medikit.common.web.PageResult;
 import com.medikit.user.entity.UserRole;
 import com.medikit.user.dto.AddressRequest;
 import com.medikit.user.dto.AddressResponse;
@@ -12,6 +14,9 @@ import com.medikit.user.entity.Address;
 import com.medikit.user.entity.User;
 import com.medikit.user.repository.AddressRepository;
 import com.medikit.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +81,33 @@ public class UserService {
                 .stream()
                 .map(this::toAddressResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<UserResponse> adminSearchUsers(String query, int page, int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+        Page<User> users = userRepository.search(query == null ? "" : query.trim(), pageable);
+        return PageResult.from(users.map(this::toResponse));
+    }
+
+    @Transactional
+    public UserResponse adminSetRole(UUID adminId, UUID userId, String role) {
+        User admin = findUser(adminId);
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new ForbiddenException("Admin access required");
+        }
+        UserRole target;
+        try {
+            target = UserRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid role");
+        }
+        if (target == UserRole.ADMIN) {
+            throw new BadRequestException("Cannot assign ADMIN role");
+        }
+        User user = findUser(userId);
+        user.setRole(target);
+        return toResponse(userRepository.save(user));
     }
 
     @Transactional

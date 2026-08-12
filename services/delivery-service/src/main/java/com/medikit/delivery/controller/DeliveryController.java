@@ -1,5 +1,7 @@
 package com.medikit.delivery.controller;
 
+import com.medikit.common.security.UserContext;
+import com.medikit.common.web.BadRequestException;
 import com.medikit.delivery.dto.DeliveryResponse;
 import com.medikit.delivery.dto.DeliveryStatusRequest;
 import com.medikit.delivery.dto.SlotRequest;
@@ -74,13 +76,41 @@ public class DeliveryController {
         return ResponseEntity.ok(deliveryService.track(orderId));
     }
 
+    @PostMapping("/{orderId}/claim")
+    public ResponseEntity<DeliveryResponse> claim(@PathVariable UUID orderId) {
+        UUID partnerId = UUID.fromString(UserContext.currentUserId());
+        return ResponseEntity.ok(deliveryService.claim(orderId, partnerId));
+    }
+
+    @GetMapping("/partner")
+    public ResponseEntity<List<DeliveryResponse>> myDeliveries(
+            @RequestParam(required = false) String status) {
+        UUID partnerId = UUID.fromString(UserContext.currentUserId());
+        DeliveryStatus target = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                target = DeliveryStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid delivery status");
+            }
+        }
+        return ResponseEntity.ok(deliveryService.myDeliveries(partnerId, target));
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<DeliveryResponse>> available() {
+        return ResponseEntity.ok(deliveryService.availableDeliveries());
+    }
+
     @PutMapping("/{orderId}/status")
     public ResponseEntity<DeliveryResponse> updateStatus(
             @PathVariable UUID orderId,
             @Valid @RequestBody DeliveryStatusRequest request) {
+        UUID callerId = UUID.fromString(UserContext.currentUserId());
         return ResponseEntity.ok(deliveryService.updateStatus(
                 orderId,
                 DeliveryStatus.valueOf(request.status()),
-                request.coordinates()));
+                request.coordinates(),
+                callerId));
     }
 }

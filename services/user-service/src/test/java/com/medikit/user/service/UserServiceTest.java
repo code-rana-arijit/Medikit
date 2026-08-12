@@ -91,4 +91,46 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.upgradeRole(user.getId(), "DISTRIBUTOR"))
                 .isInstanceOf(BadRequestException.class);
     }
+
+    @Test
+    void adminSetRole_grantsDeliveryPartner() {
+        user.setRole(UserRole.CUSTOMER);
+        User admin = User.builder()
+                .id(UUID.randomUUID())
+                .email("admin@medikit.com")
+                .fullName("Admin")
+                .role(UserRole.ADMIN)
+                .build();
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        UserResponse response = userService.adminSetRole(admin.getId(), user.getId(), "DELIVERY_PARTNER");
+
+        assertThat(response.role()).isEqualTo("DELIVERY_PARTNER");
+        assertThat(user.getRole()).isEqualTo(UserRole.DELIVERY_PARTNER);
+    }
+
+    @Test
+    void adminSetRole_throwsForbiddenWhenCallerNotAdmin() {
+        user.setRole(UserRole.CUSTOMER);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.adminSetRole(user.getId(), user.getId(), "DISTRIBUTOR"))
+                .isInstanceOf(com.medikit.common.web.ForbiddenException.class);
+    }
+
+    @Test
+    void adminSetRole_rejectsAssigningAdmin() {
+        User admin = User.builder()
+                .id(UUID.randomUUID())
+                .email("admin@medikit.com")
+                .fullName("Admin")
+                .role(UserRole.ADMIN)
+                .build();
+        when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> userService.adminSetRole(admin.getId(), user.getId(), "ADMIN"))
+                .isInstanceOf(BadRequestException.class);
+    }
 }
