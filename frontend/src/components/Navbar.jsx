@@ -38,6 +38,7 @@ export default function Navbar() {
           {user && <NavLink to="/discounts" className={navLink}>Coupons</NavLink>}
           {user?.role === 'DISTRIBUTOR' && <NavLink to="/distributor" className={navLink}>Distributor</NavLink>}
           {user?.role === 'PHARMACIST' && <NavLink to="/pharmacy" className={navLink}>Pharmacy</NavLink>}
+          {user?.role === 'DELIVERY_PARTNER' && <NavLink to="/partner" className={navLink}>Partner</NavLink>}
           {user?.role === 'ADMIN' && <NavLink to="/admin" className={navLink}>Admin</NavLink>}
         </nav>
 
@@ -82,6 +83,7 @@ export default function Navbar() {
             {user && <NavLink to="/account" className={navLink} onClick={() => setOpen(false)}>Account</NavLink>}
             {user?.role === 'DISTRIBUTOR' && <NavLink to="/distributor" className={navLink} onClick={() => setOpen(false)}>Distributor</NavLink>}
             {user?.role === 'PHARMACIST' && <NavLink to="/pharmacy" className={navLink} onClick={() => setOpen(false)}>Pharmacy</NavLink>}
+            {user?.role === 'DELIVERY_PARTNER' && <NavLink to="/partner" className={navLink} onClick={() => setOpen(false)}>Partner</NavLink>}
             {user?.role === 'ADMIN' && <NavLink to="/admin" className={navLink} onClick={() => setOpen(false)}>Admin</NavLink>}
             {!user && (
               <div className="mt-2 flex gap-2">
@@ -126,6 +128,7 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-slate-500">
             <li><Link to="/distributor" className="hover:text-brand-600">Distributor portal</Link></li>
             <li><Link to="/pharmacy" className="hover:text-brand-600">Pharmacy admin</Link></li>
+            <li><Link to="/partner" className="hover:text-brand-600">Delivery partner</Link></li>
           </ul>
         </div>
         <div>

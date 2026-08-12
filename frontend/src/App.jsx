@@ -38,7 +38,11 @@ const AdminVerifications = lazy(() => import('./pages/admin/Verifications'));
 const AdminCampaigns = lazy(() => import('./pages/admin/Campaigns'));
 const AdminDiscounts = lazy(() => import('./pages/admin/Discounts'));
 const AdminProducts = lazy(() => import('./pages/admin/Products'));
-const AdminOverview = lazy(() => import('./pages/admin/Overview'));
+const AdminUsers = lazy(() => import('./pages/admin/Users'));
+
+const PartnerDashboard = lazy(() => import('./pages/partner/Dashboard'));
+const PartnerAvailable = lazy(() => import('./pages/partner/Available'));
+const PartnerDeliveries = lazy(() => import('./pages/partner/MyDeliveries'));
 
 function Page({ children }) {
   return <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Spinner className="h-8 w-8" /></div>}>{children}</Suspense>;
@@ -90,6 +94,7 @@ export default function App() {
 
       <Route path="/distributor/*" element={<Protected roles={['DISTRIBUTOR', 'PHARMACIST', 'CUSTOMER']}><Page><DistributorRoutes /></Page></Protected>} />
       <Route path="/pharmacy/*" element={<Protected roles={['PHARMACIST', 'DISTRIBUTOR']}><Page><PharmacyRoutes /></Page></Protected>} />
+      <Route path="/partner/*" element={<Protected roles={['DELIVERY_PARTNER', 'DISTRIBUTOR', 'PHARMACIST', 'ADMIN']}><Page><PartnerRoutes /></Page></Protected>} />
       <Route path="/admin/*" element={<Protected roles={['ADMIN']}><Page><AdminRoutes /></Page></Protected>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -129,7 +134,17 @@ function AdminRoutes() {
       <Route path="campaigns" element={<AdminCampaigns />} />
       <Route path="discounts" element={<AdminDiscounts />} />
       <Route path="products" element={<AdminProducts />} />
-      <Route path="users" element={<AdminOverview />} />
+      <Route path="users" element={<AdminUsers />} />
+    </Routes>
+  );
+}
+
+function PartnerRoutes() {
+  return (
+    <Routes>
+      <Route index element={<PartnerDashboard />} />
+      <Route path="available" element={<PartnerAvailable />} />
+      <Route path="deliveries" element={<PartnerDeliveries />} />
     </Routes>
   );
 }

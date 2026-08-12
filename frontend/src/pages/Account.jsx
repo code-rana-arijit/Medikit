@@ -85,6 +85,9 @@ export default function Account() {
               Become a pharmacy
             </Button>
           </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Delivery partner access is granted by an administrator — see Admin → Users &amp; roles.
+          </p>
           <div className="mt-4 border-t border-slate-100 pt-4">
             <Link to="/loyalty" className="flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700">
               <Gift className="h-4 w-4" /> View loyalty & rewards

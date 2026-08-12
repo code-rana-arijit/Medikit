@@ -90,5 +90,11 @@ export const adminNav = [
   { to: '/admin/campaigns', label: 'Promotions', icon: Ticket },
   { to: '/admin/discounts', label: 'Issue Coupons', icon: Gift },
   { to: '/admin/products', label: 'Products & Categories', icon: Package },
-  { to: '/admin/users', label: 'Platform Overview', icon: Users },
+  { to: '/admin/users', label: 'Users & Roles', icon: Users },
+];
+
+export const deliveryPartnerNav = [
+  { to: '/partner', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/partner/available', label: 'Available Deliveries', icon: Truck },
+  { to: '/partner/deliveries', label: 'My Deliveries', icon: ClipboardList },
 ];
