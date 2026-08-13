@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import DashboardLayout, { adminNav } from '../../components/DashboardLayout';
 import { api } from '../../lib/api';
 import { StatCard, Card, Spinner, Button, StatusBadge, EmptyState } from '../../components/ui';
-import { ShieldCheck, Ticket, Package, Gift, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Ticket, Package, Gift, ArrowRight, Truck, Users } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [pendingVerifs, setPendingVerifs] = useState([]);
@@ -93,6 +93,11 @@ export default function AdminDashboard() {
         <Link to="/admin/verifications"><Button variant="secondary" className="w-full justify-start"><ShieldCheck className="h-4 w-4" /> Verify pharmacists</Button></Link>
         <Link to="/admin/campaigns"><Button variant="secondary" className="w-full justify-start"><Ticket className="h-4 w-4" /> Create campaign</Button></Link>
         <Link to="/admin/discounts"><Button variant="secondary" className="w-full justify-start"><Gift className="h-4 w-4" /> Issue coupon</Button></Link>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <Link to="/admin/deliveries"><Button variant="secondary" className="w-full justify-start"><Truck className="h-4 w-4" /> Delivery network</Button></Link>
+        <Link to="/admin/users"><Button variant="secondary" className="w-full justify-start"><Users className="h-4 w-4" /> Manage users & roles</Button></Link>
+        <Link to="/admin/products"><Button variant="secondary" className="w-full justify-start"><Package className="h-4 w-4" /> Products & categories</Button></Link>
       </div>
     </DashboardLayout>
   );

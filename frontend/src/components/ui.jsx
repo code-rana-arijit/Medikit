@@ -198,3 +198,46 @@ export function useToggle(initial = false) {
   const [on, setOn] = useState(initial);
   return [on, () => setOn(true), () => setOn(false), () => setOn((v) => !v)];
 }
+
+export function Pagination({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+  const pages = [];
+  for (let i = 0; i < totalPages; i++) {
+    if (i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1) pages.push(i);
+    else if (pages[pages.length - 1] !== '…') pages.push('…');
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+        disabled={page === 0}
+        onClick={() => onChange(page - 1)}
+      >
+        Prev
+      </button>
+      {pages.map((p) =>
+        p === '…' ? (
+          <span key={`gap-${p}`} className="px-1 text-slate-400">…</span>
+        ) : (
+          <button
+            key={p}
+            className={cx(
+              'rounded-lg px-3 py-1.5 text-sm font-semibold',
+              p === page ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50',
+            )}
+            onClick={() => onChange(p)}
+          >
+            {p + 1}
+          </button>
+        ),
+      )}
+      <button
+        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+        disabled={page >= totalPages - 1}
+        onClick={() => onChange(page + 1)}
+      >
+        Next
+      </button>
+    </div>
+  );
+}

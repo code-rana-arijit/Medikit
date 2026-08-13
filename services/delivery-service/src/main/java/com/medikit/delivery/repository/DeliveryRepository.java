@@ -2,6 +2,8 @@ package com.medikit.delivery.repository;
 
 import com.medikit.delivery.entity.Delivery;
 import com.medikit.delivery.entity.DeliveryStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -17,4 +19,8 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
     List<Delivery> findByPartnerIdAndStatusIn(UUID partnerId, List<DeliveryStatus> statuses);
 
     List<Delivery> findByPartnerIdIsNullAndStatus(DeliveryStatus status);
+
+    Page<Delivery> findByStatus(DeliveryStatus status, Pageable pageable);
+
+    long countByStatus(DeliveryStatus status);
 }

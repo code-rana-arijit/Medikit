@@ -6,17 +6,23 @@ import com.medikit.common.web.BadRequestException;
 import com.medikit.common.web.ConflictException;
 import com.medikit.common.web.ForbiddenException;
 import com.medikit.common.web.NotFoundException;
+import com.medikit.common.web.PageResult;
 import com.medikit.delivery.dto.DeliveryResponse;
 import com.medikit.delivery.dto.DeliveryStatusRequest;
 import com.medikit.delivery.entity.Delivery;
 import com.medikit.delivery.entity.DeliveryStatus;
 import com.medikit.delivery.repository.DeliveryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -127,6 +133,22 @@ public class DeliveryService {
 
     public DeliveryResponse track(UUID orderId) {
         return toResponse(findDelivery(orderId));
+    }
+
+    public PageResult<DeliveryResponse> adminDeliveries(DeliveryStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+        Page<Delivery> deliveries = status == null
+                ? deliveryRepository.findAll(pageable)
+                : deliveryRepository.findByStatus(status, pageable);
+        return PageResult.from(deliveries.map(this::toResponse));
+    }
+
+    public Map<String, Long> adminStats() {
+        Map<String, Long> stats = new HashMap<>();
+        for (DeliveryStatus s : DeliveryStatus.values()) {
+            stats.put(s.name(), deliveryRepository.countByStatus(s));
+        }
+        return stats;
     }
 
     private void validatePartner(UUID partnerId, UUID callerId) {

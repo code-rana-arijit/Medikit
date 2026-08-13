@@ -203,4 +203,38 @@ class DeliveryServiceTest {
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Cannot update location for a delivered delivery");
     }
+
+    @Test
+    void adminDeliveries_filtersByStatus() {
+        Delivery assigned = Delivery.builder()
+                .id(UUID.randomUUID()).orderId(orderId)
+                .userId(UUID.randomUUID()).pharmacyId(UUID.randomUUID())
+                .slotId(UUID.randomUUID()).status(DeliveryStatus.ASSIGNED)
+                .partnerId(partnerId).build();
+        org.springframework.data.domain.Page<Delivery> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(assigned));
+        when(deliveryRepository.findByStatus(DeliveryStatus.ASSIGNED,
+                org.springframework.data.domain.PageRequest.of(0, 20))).thenReturn(page);
+
+        var result = deliveryService.adminDeliveries(DeliveryStatus.ASSIGNED, 0, 20);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).status()).isEqualTo("ASSIGNED");
+    }
+
+    @Test
+    void adminStats_countsByStatus() {
+        when(deliveryRepository.countByStatus(DeliveryStatus.PENDING)).thenReturn(3L);
+        when(deliveryRepository.countByStatus(DeliveryStatus.ASSIGNED)).thenReturn(2L);
+        when(deliveryRepository.countByStatus(DeliveryStatus.PICKED_UP)).thenReturn(0L);
+        when(deliveryRepository.countByStatus(DeliveryStatus.IN_TRANSIT)).thenReturn(1L);
+        when(deliveryRepository.countByStatus(DeliveryStatus.DELIVERED)).thenReturn(10L);
+        when(deliveryRepository.countByStatus(DeliveryStatus.CANCELLED)).thenReturn(1L);
+
+        var stats = deliveryService.adminStats();
+
+        assertThat(stats).containsEntry("PENDING", 3L)
+                .containsEntry("ASSIGNED", 2L)
+                .containsEntry("DELIVERED", 10L);
+    }
 }

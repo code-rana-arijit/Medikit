@@ -88,6 +88,7 @@ export const adminNav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/overview', label: 'Platform Status', icon: Activity },
   { to: '/admin/verifications', label: 'Pharmacist Verifications', icon: ShieldCheck },
+  { to: '/admin/deliveries', label: 'Delivery Network', icon: Truck },
   { to: '/admin/campaigns', label: 'Promotions', icon: Ticket },
   { to: '/admin/discounts', label: 'Issue Coupons', icon: Gift },
   { to: '/admin/products', label: 'Products & Categories', icon: Package },

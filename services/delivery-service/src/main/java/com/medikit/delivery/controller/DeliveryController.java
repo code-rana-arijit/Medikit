@@ -2,6 +2,7 @@ package com.medikit.delivery.controller;
 
 import com.medikit.common.security.UserContext;
 import com.medikit.common.web.BadRequestException;
+import com.medikit.common.web.PageResult;
 import com.medikit.delivery.dto.DeliveryResponse;
 import com.medikit.delivery.dto.DeliveryStatusRequest;
 import com.medikit.delivery.dto.LocationUpdateRequest;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -122,5 +124,26 @@ public class DeliveryController {
         UUID callerId = UUID.fromString(UserContext.currentUserId());
         return ResponseEntity.ok(deliveryService.updateLocation(
                 orderId, request.latitude(), request.longitude(), callerId));
+    }
+
+    @GetMapping("/admin")
+    public ResponseEntity<PageResult<DeliveryResponse>> adminDeliveries(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        DeliveryStatus target = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                target = DeliveryStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid delivery status");
+            }
+        }
+        return ResponseEntity.ok(deliveryService.adminDeliveries(target, page, size));
+    }
+
+    @GetMapping("/admin/stats")
+    public ResponseEntity<Map<String, Long>> adminStats() {
+        return ResponseEntity.ok(deliveryService.adminStats());
     }
 }

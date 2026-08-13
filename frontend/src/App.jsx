@@ -39,6 +39,7 @@ const AdminCampaigns = lazy(() => import('./pages/admin/Campaigns'));
 const AdminDiscounts = lazy(() => import('./pages/admin/Discounts'));
 const AdminProducts = lazy(() => import('./pages/admin/Products'));
 const AdminOverview = lazy(() => import('./pages/admin/Overview'));
+const AdminDeliveries = lazy(() => import('./pages/admin/Deliveries'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 
 const PartnerDashboard = lazy(() => import('./pages/partner/Dashboard'));
@@ -136,6 +137,7 @@ function AdminRoutes() {
       <Route path="discounts" element={<AdminDiscounts />} />
       <Route path="products" element={<AdminProducts />} />
       <Route path="overview" element={<AdminOverview />} />
+      <Route path="deliveries" element={<AdminDeliveries />} />
       <Route path="users" element={<AdminUsers />} />
     </Routes>
   );
