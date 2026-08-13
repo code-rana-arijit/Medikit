@@ -1,6 +1,7 @@
 package com.medikit.order.controller;
 
 import com.medikit.common.security.UserContext;
+import com.medikit.common.web.ForbiddenException;
 import com.medikit.common.web.PageResult;
 import com.medikit.order.dto.CancelOrderRequest;
 import com.medikit.order.dto.CreateOrderRequest;
@@ -40,7 +41,14 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(orderService.getOrder(orderId));
+        String callerId = UserContext.currentUserId();
+        String callerRole = UserContext.currentUserRole();
+        OrderResponse order = orderService.getOrder(orderId);
+        if (callerRole != null && "CUSTOMER".equalsIgnoreCase(callerRole)
+                && callerId != null && !callerId.equals(order.userId().toString())) {
+            throw new ForbiddenException("Order not found");
+        }
+        return ResponseEntity.ok(order);
     }
 
     @GetMapping
@@ -57,6 +65,10 @@ public class OrderController {
             @PathVariable UUID pharmacyId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+        String callerRole = UserContext.currentUserRole();
+        if (callerRole == null || "CUSTOMER".equalsIgnoreCase(callerRole)) {
+            throw new ForbiddenException("Pharmacy orders are restricted");
+        }
         Page<OrderResponse> result = orderService.getPharmacyOrders(pharmacyId, page, Math.min(size, 50));
         return ResponseEntity.ok(PageResult.from(result));
     }
@@ -72,6 +84,9 @@ public class OrderController {
     @PostMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> updateStatus(@PathVariable UUID orderId,
                                                       @RequestParam String status) {
+        if (!"ADMIN".equalsIgnoreCase(UserContext.currentUserRole())) {
+            throw new ForbiddenException("Only admins can update order status");
+        }
         return ResponseEntity.ok(orderService.updateStatus(orderId, status));
     }
 
