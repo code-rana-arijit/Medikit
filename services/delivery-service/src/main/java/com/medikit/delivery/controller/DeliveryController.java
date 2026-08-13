@@ -4,6 +4,7 @@ import com.medikit.common.security.UserContext;
 import com.medikit.common.web.BadRequestException;
 import com.medikit.delivery.dto.DeliveryResponse;
 import com.medikit.delivery.dto.DeliveryStatusRequest;
+import com.medikit.delivery.dto.LocationUpdateRequest;
 import com.medikit.delivery.dto.SlotRequest;
 import com.medikit.delivery.dto.SlotResponse;
 import com.medikit.delivery.entity.DeliveryStatus;
@@ -112,5 +113,14 @@ public class DeliveryController {
                 DeliveryStatus.valueOf(request.status()),
                 request.coordinates(),
                 callerId));
+    }
+
+    @PutMapping("/{orderId}/location")
+    public ResponseEntity<DeliveryResponse> updateLocation(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody LocationUpdateRequest request) {
+        UUID callerId = UUID.fromString(UserContext.currentUserId());
+        return ResponseEntity.ok(deliveryService.updateLocation(
+                orderId, request.latitude(), request.longitude(), callerId));
     }
 }

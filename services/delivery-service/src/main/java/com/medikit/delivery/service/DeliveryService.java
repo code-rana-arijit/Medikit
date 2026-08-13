@@ -74,6 +74,23 @@ public class DeliveryService {
     }
 
     @Transactional
+    public DeliveryResponse updateLocation(UUID orderId, double latitude, double longitude, UUID callerId) {
+        Delivery delivery = findDelivery(orderId);
+        if (delivery.getPartnerId() == null) {
+            throw new BadRequestException("Delivery has no assigned partner yet");
+        }
+        validatePartner(delivery.getPartnerId(), callerId);
+        if (delivery.getStatus() == DeliveryStatus.DELIVERED || delivery.getStatus() == DeliveryStatus.CANCELLED) {
+            throw new ConflictException("Cannot update location for a " + delivery.getStatus().name().toLowerCase() + " delivery");
+        }
+        delivery.setPartnerLatitude(latitude);
+        delivery.setPartnerLongitude(longitude);
+        Delivery saved = deliveryRepository.save(delivery);
+        eventPublisher.publish(Topics.DELIVERY_UPDATED, orderId.toString(), saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
     public DeliveryResponse updateStatus(UUID orderId, DeliveryStatus status,
                                          DeliveryStatusRequest.Coordinates coordinates, UUID callerId) {
         Delivery delivery = findDelivery(orderId);

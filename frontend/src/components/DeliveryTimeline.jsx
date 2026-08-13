@@ -25,7 +25,13 @@ export default function DeliveryTimeline({ orderId }) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [orderId]);
+  useEffect(() => {
+    load();
+    const active = delivery && ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(delivery.status);
+    if (!active) return;
+    const id = setInterval(load, 8000);
+    return () => clearInterval(id);
+  }, [orderId, delivery?.status]);
 
   if (loading) return <div className="flex justify-center py-8"><Spinner /></div>;
   if (!delivery) {
@@ -92,6 +98,15 @@ export default function DeliveryTimeline({ orderId }) {
         <div className="flex items-center gap-2 text-slate-600">
           <MapPin className="h-4 w-4 text-brand-600" />
           <span>Partner: {delivery.partnerLatitude != null ? `${delivery.partnerLatitude.toFixed(4)}, ${delivery.partnerLongitude?.toFixed(4)}` : '—'}</span>
+          {['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(delivery.status) && (
+            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              Live
+            </span>
+          )}
         </div>
       </div>
 

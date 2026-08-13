@@ -169,4 +169,38 @@ class DeliveryServiceTest {
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Cannot claim cancelled delivery");
     }
+
+    @Test
+    void updateLocation_savesPartnerCoordinates() {
+        delivery.setPartnerId(partnerId);
+        delivery.setStatus(DeliveryStatus.IN_TRANSIT);
+        when(deliveryRepository.findByOrderId(orderId)).thenReturn(Optional.of(delivery));
+        when(deliveryRepository.save(delivery)).thenReturn(delivery);
+
+        var response = deliveryService.updateLocation(orderId, 12.9716, 77.5946, partnerId);
+
+        assertThat(response.partnerLatitude()).isEqualTo(12.9716);
+        assertThat(response.partnerLongitude()).isEqualTo(77.5946);
+    }
+
+    @Test
+    void updateLocation_throwsForbiddenForWrongPartner() {
+        delivery.setPartnerId(partnerId);
+        delivery.setStatus(DeliveryStatus.IN_TRANSIT);
+        when(deliveryRepository.findByOrderId(orderId)).thenReturn(Optional.of(delivery));
+
+        assertThatThrownBy(() -> deliveryService.updateLocation(orderId, 12.9716, 77.5946, UUID.randomUUID()))
+                .isInstanceOf(com.medikit.common.web.ForbiddenException.class);
+    }
+
+    @Test
+    void updateLocation_throwsConflictWhenDelivered() {
+        delivery.setPartnerId(partnerId);
+        delivery.setStatus(DeliveryStatus.DELIVERED);
+        when(deliveryRepository.findByOrderId(orderId)).thenReturn(Optional.of(delivery));
+
+        assertThatThrownBy(() -> deliveryService.updateLocation(orderId, 12.9716, 77.5946, partnerId))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("Cannot update location for a delivered delivery");
+    }
 }

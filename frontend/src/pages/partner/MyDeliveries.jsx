@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout, { deliveryPartnerNav } from '../../components/DashboardLayout';
 import { api } from '../../lib/api';
-import { Card, StatusBadge, Spinner, Alert, EmptyState, Select, Button } from '../../components/ui';
-import { ClipboardList, MapPin, Timer, PackageCheck, RefreshCw } from 'lucide-react';
+import { Card, StatusBadge, Spinner, Alert, EmptyState, Select, Button, Input } from '../../components/ui';
+import { ClipboardList, MapPin, Timer, PackageCheck, RefreshCw, Share2, Crosshair } from 'lucide-react';
 
 const NEXT_STATUS = {
   ASSIGNED: 'PICKED_UP',
@@ -19,6 +19,9 @@ export default function PartnerDeliveries() {
   const [updating, setUpdating] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [locationDrafts, setLocationDrafts] = useState({});
+  const [sendingLoc, setSendingLoc] = useState(null);
+  const [locError, setLocError] = useState('');
 
   const load = async () => {
     setError('');
@@ -31,6 +34,40 @@ export default function PartnerDeliveries() {
   };
 
   useEffect(() => { load(); }, [statusFilter]);
+
+  const sendLocation = async (d) => {
+    const draft = locationDrafts[d.id];
+    if (!draft || draft.latitude === '' || draft.longitude === '') return;
+    const latitude = Number(draft.latitude);
+    const longitude = Number(draft.longitude);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) { setLocError('Enter valid coordinates'); return; }
+    setSendingLoc(d.id); setLocError('');
+    try {
+      await api.put(`/delivery/${d.orderId}/location`, { latitude, longitude });
+      setNotice(`Live location shared for order ${d.orderId.slice(0, 8)}`);
+      setLocationDrafts((prev) => ({ ...prev, [d.id]: undefined }));
+      await load();
+    } catch (e) { setLocError(e.message); }
+    setSendingLoc(null);
+  };
+
+  const useMyLocation = (d) => {
+    if (!navigator.geolocation) { setLocError('Geolocation not supported in this browser'); return; }
+    setLocError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocationDrafts((prev) => ({
+          ...prev,
+          [d.id]: {
+            latitude: pos.coords.latitude.toFixed(6),
+            longitude: pos.coords.longitude.toFixed(6),
+          },
+        }));
+      },
+      () => setLocError('Could not fetch your location. Enter coordinates manually.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const advance = async (d) => {
     const next = NEXT_STATUS[d.status];
@@ -54,6 +91,7 @@ export default function PartnerDeliveries() {
     <DashboardLayout title="My deliveries" subtitle="Delivery partner" navItems={deliveryPartnerNav}>
       {error && <Alert type="error" className="mb-4" onClose={() => setError('')}>{error}</Alert>}
       {notice && <Alert type="success" className="mb-4" onClose={() => setNotice('')}>{notice}</Alert>}
+      {locError && <Alert type="error" className="mb-4" onClose={() => setLocError('')}>{locError}</Alert>}
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-48">
@@ -93,11 +131,34 @@ export default function PartnerDeliveries() {
                     </p>
                   )}
                 </div>
-                {NEXT_STATUS[d.status] && (
-                  <Button onClick={() => advance(d)} disabled={updating === d.id} loading={updating === d.id} size="sm">
-                    Mark {NEXT_STATUS[d.status]}
-                  </Button>
-                )}
+                <div className="flex flex-col items-end gap-2">
+                  {ACTIVE.includes(d.status) && (
+                    <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                      <Share2 className="h-4 w-4 text-brand-600" />
+                      <Input
+                        className="w-24 px-2 py-1 text-xs"
+                        placeholder="Lat"
+                        value={locationDrafts[d.id]?.latitude ?? ''}
+                        onChange={(e) => setLocationDrafts((prev) => ({ ...prev, [d.id]: { ...(prev[d.id] || {}), latitude: e.target.value } }))}
+                      />
+                      <Input
+                        className="w-24 px-2 py-1 text-xs"
+                        placeholder="Lng"
+                        value={locationDrafts[d.id]?.longitude ?? ''}
+                        onChange={(e) => setLocationDrafts((prev) => ({ ...prev, [d.id]: { ...(prev[d.id] || {}), longitude: e.target.value } }))}
+                      />
+                      <Button size="sm" variant="secondary" onClick={() => useMyLocation(d)} title="Use my current location"><Crosshair className="h-4 w-4" /></Button>
+                      <Button size="sm" onClick={() => sendLocation(d)} disabled={sendingLoc === d.id} loading={sendingLoc === d.id}>
+                        Share
+                      </Button>
+                    </div>
+                  )}
+                  {NEXT_STATUS[d.status] && (
+                    <Button onClick={() => advance(d)} disabled={updating === d.id} loading={updating === d.id} size="sm">
+                      Mark {NEXT_STATUS[d.status]}
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
