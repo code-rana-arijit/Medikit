@@ -38,6 +38,7 @@ const AdminVerifications = lazy(() => import('./pages/admin/Verifications'));
 const AdminCampaigns = lazy(() => import('./pages/admin/Campaigns'));
 const AdminDiscounts = lazy(() => import('./pages/admin/Discounts'));
 const AdminProducts = lazy(() => import('./pages/admin/Products'));
+const AdminOverview = lazy(() => import('./pages/admin/Overview'));
 const AdminUsers = lazy(() => import('./pages/admin/Users'));
 
 const PartnerDashboard = lazy(() => import('./pages/partner/Dashboard'));
@@ -134,6 +135,7 @@ function AdminRoutes() {
       <Route path="campaigns" element={<AdminCampaigns />} />
       <Route path="discounts" element={<AdminDiscounts />} />
       <Route path="products" element={<AdminProducts />} />
+      <Route path="overview" element={<AdminOverview />} />
       <Route path="users" element={<AdminUsers />} />
     </Routes>
   );

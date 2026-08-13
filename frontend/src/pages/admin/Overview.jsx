@@ -30,10 +30,10 @@ export default function AdminOverview() {
     init();
   }, []);
 
-  if (loading) return <DashboardLayout title="Platform Overview" subtitle="Platform control" navItems={adminNav}><div className="flex justify-center py-20"><Spinner className="h-8 w-8" /></div></DashboardLayout>;
+  if (loading) return <DashboardLayout title="Platform status" subtitle="Platform control" navItems={adminNav}><div className="flex justify-center py-20"><Spinner className="h-8 w-8" /></div></DashboardLayout>;
 
   return (
-    <DashboardLayout title="Platform Overview" subtitle="Platform control" navItems={adminNav}>
+    <DashboardLayout title="Platform status" subtitle="Platform control" navItems={adminNav}>
       {error && <Alert type="error" className="mb-4" onClose={() => setError('')}>{error}</Alert>}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth';
 import { cx } from './ui';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, Truck, ClipboardList,
-  Boxes, Pill, LogOut, ShieldCheck, Ticket, Gift, Users,
+  Boxes, Pill, LogOut, ShieldCheck, Ticket, Gift, Users, Activity,
 } from 'lucide-react';
 
 const linkCls = ({ isActive }) =>
@@ -86,6 +86,7 @@ export const pharmacyNav = [
 
 export const adminNav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/overview', label: 'Platform Status', icon: Activity },
   { to: '/admin/verifications', label: 'Pharmacist Verifications', icon: ShieldCheck },
   { to: '/admin/campaigns', label: 'Promotions', icon: Ticket },
   { to: '/admin/discounts', label: 'Issue Coupons', icon: Gift },
