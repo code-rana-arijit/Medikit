@@ -295,6 +295,13 @@ This is a huge project - here is exactly how it is being (and should be) deliver
 - [x] **Retail fulfillment** - distributors claim customer retail orders via `order-service` (Feign), tracking CLAIMED → PICKED_UP → IN_TRANSIT → DELIVERED
 - [x] **Fulfillment guardrails** - one distributor per order, self-order rejection, strict status transitions, cross-distributor access control
 
+### Phase 11 - Delivery Partner Portal (DONE)
+- [x] **Delivery partner role** - `user-service` supports `DELIVERY_PARTNER`; admins grant the role via `GET /api/v1/admin/users?q=` and `PUT /api/v1/admin/users/{id}/role`
+- [x] **Claim pool** - `GET /api/v1/delivery/available` lists unassigned PENDING deliveries; partners claim one with `POST /api/v1/delivery/{orderId}/claim` (guardrails: no double-claim, cancelled deliveries rejected)
+- [x] **Partner deliveries** - `GET /api/v1/delivery/partner?status=` lists the partner's deliveries; `PUT /api/v1/delivery/{orderId}/status` is role-guarded so only the assigned partner can advance status (ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED)
+- [x] **Live location sharing** - partners publish live coordinates via `PUT /api/v1/delivery/{orderId}/location` (assigned-partner only, rejected after DELIVERED/CANCELLED); customers see the partner's position and a live badge on the order detail, polling every 8s
+- [x] **Partner portal UI** - `/partner` dashboard with status stats, available-delivery claim queue, and my-deliveries workflow with manual or browser-geolocation location sharing
+
 ---
 
 ## Scaling to 50,000 Concurrent Users
@@ -567,6 +574,7 @@ medikit/
 - [x] Phase 7: Production compliance (audit, retention, DR, pharmacist verification)
 - [x] Phase 8: AI Health Intelligence (interaction checker, symptom recommender, prescription analysis, assistant chat API)
 - [x] Phase 10: Distributor Portal (B2B wholesale supply + B2C retail fulfillment)
+- [x] Phase 11: Delivery Partner Portal (claim pool, role-guarded status updates, live location tracking)
 - [ ] Mobile apps (React Native / Flutter) consuming the gateway API
 - [ ] Distributor dashboard web app (static HTML/JS against distributor-service APIs)
 
